@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: crisismesh
+    runtime: node
+    plan: free
+    region: oregon
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: DATABASE_PATH
+        value: /opt/render/project/src/data/crisismesh.db
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_PHONE_NUMBER
+        sync: false
+      - key: TWILIO_CHANNEL
+        value: whatsapp
+      - key: DEMO_REQUESTER_PHONE
+        value: "+16464771086"
+      - key: DEMO_HELPER_PHONE
+        value: "+19293940349"
