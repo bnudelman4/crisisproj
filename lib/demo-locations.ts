@@ -1,5 +1,5 @@
 export const DEMO_CITY = {
-  name: "Manhattan, NYC",
+  name: "Default center",
   lat: 40.7589,
   lng: -73.9851,
   radiusKm: 5,
@@ -25,13 +25,22 @@ function rand01(seed: number, salt: number): number {
   return x - Math.floor(x);
 }
 
-export function spreadAroundCity(id: string): { lat: number; lng: number } {
+export function spreadAround(
+  id: string,
+  centerLat: number,
+  centerLng: number,
+  radiusKm: number = DEMO_CITY.radiusKm
+): { lat: number; lng: number } {
   const seed = hashStr(id);
-  const r = rand01(seed, 1) * DEMO_CITY.radiusKm;
+  const r = rand01(seed, 1) * radiusKm;
   const theta = rand01(seed, 2) * 2 * Math.PI;
   const dx = r * Math.cos(theta);
   const dy = r * Math.sin(theta);
-  const lat = DEMO_CITY.lat + dy / KM_PER_DEG_LAT;
-  const lng = DEMO_CITY.lng + dx / kmPerDegLng(DEMO_CITY.lat);
+  const lat = centerLat + dy / KM_PER_DEG_LAT;
+  const lng = centerLng + dx / kmPerDegLng(centerLat);
   return { lat: Number(lat.toFixed(6)), lng: Number(lng.toFixed(6)) };
+}
+
+export function spreadAroundCity(id: string): { lat: number; lng: number } {
+  return spreadAround(id, DEMO_CITY.lat, DEMO_CITY.lng);
 }

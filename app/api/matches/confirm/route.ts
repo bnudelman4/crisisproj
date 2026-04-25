@@ -1,19 +1,23 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { sendSms, isTwilioConfigured } from "@/lib/sms";
-import { findMatch, helperAcceptMatch } from "@/lib/matches";
+import { findMatch, requesterConfirmMatch } from "@/lib/matches";
 import { getSessionUser } from "@/lib/auth";
 import { resolveDemoPhone } from "@/lib/demo-routing";
 
 export const runtime = "nodejs";
+
+interface UserRow {
+  id: number;
+  name: string;
+  phone: string;
+}
 
 interface RequestRow {
   id: number;
   user_id: number;
   type: string;
   description: string;
-  phone: string;
-  name: string;
 }
 
 export async function POST(req: Request) {
@@ -24,9 +28,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: "Invalid JSON body." }, { status: 400 });
   }
 
-  const helper = getSessionUser();
-  if (!helper) {
-    return NextResponse.json({ success: false, error: "Login required to accept matches." }, { status: 401 });
+  const requester = getSessionUser();
+  if (!requester) {
+    return NextResponse.json(
+      { success: false, error: "Login required to confirm matches." },
+      { status: 401 }
+    );
   }
 
   const matchId = typeof body.matchId === "string" ? body.matchId : "";
@@ -34,36 +41,47 @@ export async function POST(req: Request) {
   if (!match) {
     return NextResponse.json({ success: false, error: "Match not found." }, { status: 404 });
   }
-
-  if (match.status !== "proposed") {
+  if (match.status !== "helper_accepted") {
     return NextResponse.json(
-      { success: false, error: `Match already ${match.status}.` },
+      { success: false, error: `Match not awaiting confirmation (status=${match.status}).` },
       { status: 409 }
+    );
+  }
+  if (match.requestUserId !== requester.id) {
+    return NextResponse.json(
+      { success: false, error: "Only the requester can confirm this match." },
+      { status: 403 }
     );
   }
 
   const db = getDb();
+  const helperRow = db
+    .prepare("SELECT id, name, phone FROM users WHERE id = ?")
+    .get(match.helperUserId) as UserRow | undefined;
   const requestRow = db
-    .prepare(
-      `SELECT r.id, r.user_id, r.type, r.description, u.phone, u.name
-       FROM requests r JOIN users u ON u.id = r.user_id
-       WHERE r.id = ?`
-    )
+    .prepare("SELECT id, user_id, type, description FROM requests WHERE id = ?")
     .get(match.requestId) as RequestRow | undefined;
 
+  if (!helperRow) {
+    return NextResponse.json({ success: false, error: "Helper user missing." }, { status: 404 });
+  }
   if (!requestRow) {
     return NextResponse.json({ success: false, error: "Request row missing." }, { status: 404 });
   }
 
-  const updated = helperAcceptMatch(match.id, { userId: helper.id, name: helper.name });
+  const updated = requesterConfirmMatch(match.id);
   if (!updated) {
     return NextResponse.json({ success: false, error: "Match update failed." }, { status: 500 });
   }
 
-  const requesterMessage = `CrisisMesh: ${helper.name} has accepted your ${requestRow.type} request. They are offering: "${match.action}". Reply CONFIRM HELP to approve, or visit the dashboard.`;
+  db.prepare("UPDATE requests SET status = 'matched' WHERE id = ?").run(requestRow.id);
+  if (match.providerId !== null) {
+    db.prepare("UPDATE providers SET status = 'matched' WHERE id = ?").run(match.providerId);
+  }
 
-  const dest = resolveDemoPhone("requester", requestRow.phone);
-  const sms = await sendSms(dest, requesterMessage).catch((e) => ({
+  const helperMessage = `CrisisMesh: ${requester.name} approved your help for their ${requestRow.type} request. You can begin now. Action: "${match.action}"`;
+  const dest = resolveDemoPhone("helper", helperRow.phone);
+  const sms = await sendSms(dest, helperMessage).catch((e) => ({
     to: dest,
     sid: null,
     mode: "error" as const,
@@ -77,7 +95,5 @@ export async function POST(req: Request) {
     status: updated.status,
     twilioConfigured: isTwilioConfigured(),
     sms,
-    nextStep: "Awaiting requester confirmation.",
   });
 }
-

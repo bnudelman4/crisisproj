@@ -2,7 +2,9 @@ import { NextResponse } from "next/server";
 import twilio from "twilio";
 import Anthropic from "@anthropic-ai/sdk";
 import { getDb, type UserRow } from "@/lib/db";
-import { isTwilioConfigured } from "@/lib/sms";
+import { isTwilioConfigured, sendSms } from "@/lib/sms";
+import { listMatches, requesterConfirmMatch, type MatchRecord } from "@/lib/matches";
+import { resolveDemoPhone } from "@/lib/demo-routing";
 
 export const runtime = "nodejs";
 
@@ -109,6 +111,38 @@ export async function POST(req: Request) {
   if (!user) {
     console.log(`[CrisisMesh SMS:inbound] unknown sender ${from}: ${text}`);
     return twiml(TWIML_OK);
+  }
+
+  if (/^\s*(confirm|yes|approve|approved)\b/i.test(text)) {
+    const pending = listMatches()
+      .filter((m: MatchRecord) => m.requestUserId === user.id && m.status === "helper_accepted")
+      .sort((a, b) => (a.helperAcceptedAt ?? "").localeCompare(b.helperAcceptedAt ?? ""));
+    const target = pending[pending.length - 1];
+    if (!target) {
+      const xml =
+        '<?xml version="1.0" encoding="UTF-8"?><Response><Message>CrisisMesh: nothing pending your confirmation right now.</Message></Response>';
+      return twiml(xml);
+    }
+    const updated = requesterConfirmMatch(target.id);
+    if (updated) {
+      db.prepare("UPDATE requests SET status = 'matched' WHERE id = ?").run(updated.requestId);
+      if (updated.providerId !== null) {
+        db.prepare("UPDATE providers SET status = 'matched' WHERE id = ?").run(updated.providerId);
+      }
+      const helperRow = db
+        .prepare("SELECT phone FROM users WHERE id = ?")
+        .get(updated.helperUserId) as { phone: string } | undefined;
+      if (helperRow) {
+        const dest = resolveDemoPhone("helper", helperRow.phone);
+        const helperMessage = `CrisisMesh: ${user.name} approved your help. You can begin now. Action: "${updated.action}"`;
+        await sendSms(dest, helperMessage).catch((e) => {
+          console.log(`[CrisisMesh SMS:inbound] helper notify failed: ${e instanceof Error ? e.message : e}`);
+        });
+      }
+    }
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>CrisisMesh: confirmed. ${updated?.helperName ?? "Helper"} has been notified to begin.</Message></Response>`;
+    console.log(`[CrisisMesh SMS:inbound] ${from} confirmed match ${target.id}`);
+    return twiml(xml);
   }
 
   const classified = await classify(text);

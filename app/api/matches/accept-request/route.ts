@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { sendSms, isTwilioConfigured } from "@/lib/sms";
-import { findMatch, helperAcceptMatch } from "@/lib/matches";
+import { manuallyAcceptRequest } from "@/lib/matches";
 import { getSessionUser } from "@/lib/auth";
 import { resolveDemoPhone } from "@/lib/demo-routing";
 
@@ -14,6 +14,7 @@ interface RequestRow {
   description: string;
   phone: string;
   name: string;
+  status: string;
 }
 
 export async function POST(req: Request) {
@@ -26,42 +27,47 @@ export async function POST(req: Request) {
 
   const helper = getSessionUser();
   if (!helper) {
-    return NextResponse.json({ success: false, error: "Login required to accept matches." }, { status: 401 });
-  }
-
-  const matchId = typeof body.matchId === "string" ? body.matchId : "";
-  const match = matchId ? findMatch(matchId) : undefined;
-  if (!match) {
-    return NextResponse.json({ success: false, error: "Match not found." }, { status: 404 });
-  }
-
-  if (match.status !== "proposed") {
     return NextResponse.json(
-      { success: false, error: `Match already ${match.status}.` },
-      { status: 409 }
+      { success: false, error: "Login required to accept requests." },
+      { status: 401 }
     );
+  }
+
+  const requestId = Number(body.requestId);
+  if (!Number.isInteger(requestId) || requestId <= 0) {
+    return NextResponse.json({ success: false, error: "requestId required." }, { status: 400 });
   }
 
   const db = getDb();
   const requestRow = db
     .prepare(
-      `SELECT r.id, r.user_id, r.type, r.description, u.phone, u.name
+      `SELECT r.id, r.user_id, r.type, r.description, r.status, u.phone, u.name
        FROM requests r JOIN users u ON u.id = r.user_id
        WHERE r.id = ?`
     )
-    .get(match.requestId) as RequestRow | undefined;
+    .get(requestId) as RequestRow | undefined;
 
   if (!requestRow) {
-    return NextResponse.json({ success: false, error: "Request row missing." }, { status: 404 });
+    return NextResponse.json({ success: false, error: "Request not found." }, { status: 404 });
+  }
+  if (requestRow.user_id === helper.id) {
+    return NextResponse.json(
+      { success: false, error: "Cannot accept your own request." },
+      { status: 400 }
+    );
   }
 
-  const updated = helperAcceptMatch(match.id, { userId: helper.id, name: helper.name });
-  if (!updated) {
-    return NextResponse.json({ success: false, error: "Match update failed." }, { status: 500 });
-  }
+  const action = `${helper.name} accepted request: ${requestRow.description}`;
+  const match = manuallyAcceptRequest({
+    requestId: requestRow.id,
+    helperUserId: helper.id,
+    helperName: helper.name,
+    requestUserId: requestRow.user_id,
+    requesterName: requestRow.name,
+    action,
+  });
 
-  const requesterMessage = `CrisisMesh: ${helper.name} has accepted your ${requestRow.type} request. They are offering: "${match.action}". Reply CONFIRM HELP to approve, or visit the dashboard.`;
-
+  const requesterMessage = `CrisisMesh: ${helper.name} has accepted your ${requestRow.type} request. Reply CONFIRM HELP to approve them, or visit the dashboard.`;
   const dest = resolveDemoPhone("requester", requestRow.phone);
   const sms = await sendSms(dest, requesterMessage).catch((e) => ({
     to: dest,
@@ -73,11 +79,10 @@ export async function POST(req: Request) {
 
   return NextResponse.json({
     success: true,
-    matchId: updated.id,
-    status: updated.status,
+    matchId: match.id,
+    status: match.status,
     twilioConfigured: isTwilioConfigured(),
     sms,
     nextStep: "Awaiting requester confirmation.",
   });
 }
-

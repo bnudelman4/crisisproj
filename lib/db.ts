@@ -43,9 +43,29 @@ const SCHEMA_SQL = `
   );
 `;
 
+interface ColInfo {
+  name: string;
+}
+
+function ensureColumn(db: Database.Database, table: string, col: string, type: string) {
+  const cols = db.prepare(`PRAGMA table_info(${table})`).all() as ColInfo[];
+  if (!cols.some((c) => c.name === col)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${type}`);
+  }
+}
+
 function init(db: Database.Database) {
   db.pragma("journal_mode = WAL");
   db.exec(SCHEMA_SQL);
+  ensureColumn(db, "users", "password_hash", "TEXT");
+  ensureColumn(db, "requests", "display_name", "TEXT");
+  ensureColumn(db, "requests", "lat", "REAL");
+  ensureColumn(db, "requests", "lng", "REAL");
+  ensureColumn(db, "requests", "seeded", "INTEGER DEFAULT 0");
+  ensureColumn(db, "providers", "display_name", "TEXT");
+  ensureColumn(db, "providers", "lat", "REAL");
+  ensureColumn(db, "providers", "lng", "REAL");
+  ensureColumn(db, "providers", "seeded", "INTEGER DEFAULT 0");
 }
 
 export function getDb(): Database.Database {
