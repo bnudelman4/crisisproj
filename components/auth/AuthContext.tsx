@@ -17,12 +17,37 @@ import {
  * stack picks.
  */
 
+/**
+ * Role taxonomy:
+ *  - "user"        — neighbor / member of the room. Can post needs, offer
+ *                    help, react. Default for new signups. This is the
+ *                    primary dashboard surface.
+ *  - "coordinator" — trained admin who approves match safety plans. Ops
+ *                    surface. Granted to a small allowlist of emails (or
+ *                    explicitly chosen at signup).
+ */
 export type AuthUser = {
   name: string;
   email: string;
-  role: "coordinator" | "helper";
+  role: "user" | "coordinator";
   joinedAt: string;
 };
+
+/** Demo allowlist — emails that auto-promote to coordinator. */
+const COORDINATOR_EMAILS = new Set<string>([
+  "coordinator@bridge.com",
+  "coord@bridge.com",
+  "admin@bridge.com",
+  "rivas@bridge.com",
+]);
+
+function inferRole(email: string, requested?: AuthUser["role"]): AuthUser["role"] {
+  if (requested) return requested;
+  const e = email.trim().toLowerCase();
+  if (COORDINATOR_EMAILS.has(e)) return "coordinator";
+  if (e.startsWith("coord") || e.startsWith("admin")) return "coordinator";
+  return "user";
+}
 
 type AuthState = {
   user: AuthUser | null;
@@ -80,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const next: AuthUser = {
       name: nameFromEmail(email),
       email,
-      role: "coordinator",
+      role: inferRole(email),
       joinedAt: new Date().toISOString(),
     };
     persist(next);
@@ -93,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const next: AuthUser = {
       name: name.trim() || nameFromEmail(email),
       email,
-      role: role ?? "coordinator",
+      role: inferRole(email, role),
       joinedAt: new Date().toISOString(),
     };
     persist(next);

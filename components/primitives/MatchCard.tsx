@@ -6,6 +6,7 @@ import {
   safetyFlags,
   handoffOptionLabels,
 } from "@/lib/safety";
+import { useAuth } from "@/components/auth/AuthContext";
 import { Badge } from "./Badge";
 import { SafetyScoreRing } from "./SafetyScore";
 import {
@@ -14,6 +15,7 @@ import {
   ShieldCheck,
   ArrowRight,
   Ban,
+  HandHelping,
 } from "lucide-react";
 
 export function MatchCard({
@@ -35,6 +37,8 @@ export function MatchCard({
   onBlock?: () => void;
   className?: string;
 }) {
+  const { user } = useAuth();
+  const isCoordinator = user?.role === "coordinator";
   const blocked = match.status === "blocked";
   const approved = match.status === "approved" || match.status === "messaging" || match.status === "active" || match.status === "complete";
 
@@ -49,14 +53,14 @@ export function MatchCard({
         className
       )}
     >
-      {/* Header strip */}
+      {/* Header strip — wraps gracefully in narrow rails */}
       <header
         className={cn(
-          "flex items-center justify-between gap-3 px-4 py-3 border-b",
+          "flex items-start justify-between gap-2 flex-wrap px-4 py-3 border-b",
           inverse ? "border-on-inverse" : "border-hairline"
         )}
       >
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
           {match.bestMatch && !blocked && (
             <Badge variant={inverse ? "inverse" : "outline"} className="!font-mono">
               ★ Best match
@@ -81,7 +85,7 @@ export function MatchCard({
         </div>
         <span
           className={cn(
-            "font-mono text-[10px] tracking-[0.14em] uppercase",
+            "shrink-0 whitespace-nowrap font-mono text-[10px] tracking-[0.14em] uppercase",
             inverse ? "text-ink-on-inverse-muted" : "text-ink-tertiary"
           )}
         >
@@ -178,10 +182,10 @@ export function MatchCard({
         </div>
       </div>
 
-      {/* Recommended plan */}
+      {/* Recommended plan — container query so buttons stack below in narrow rails */}
       <div
         className={cn(
-          "px-4 py-4 border-t grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end",
+          "@container px-4 py-4 border-t grid grid-cols-1 @[460px]:grid-cols-[1fr_auto] gap-3 items-end",
           inverse ? "border-on-inverse" : "border-hairline"
         )}
       >
@@ -216,7 +220,7 @@ export function MatchCard({
               <ShieldCheck size={14} strokeWidth={1.6} />
               Plan approved
             </button>
-          ) : (
+          ) : isCoordinator ? (
             <>
               <button
                 onClick={onChange}
@@ -249,6 +253,32 @@ export function MatchCard({
               >
                 Review match
                 <ArrowRight size={13} strokeWidth={1.6} />
+              </button>
+            </>
+          ) : (
+            // Member-side actions — single primary "offer to help" CTA + a
+            // softer secondary that opens the same modal for read-through.
+            <>
+              <button
+                onClick={onMore}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3 h-9 font-sans text-[12.5px] font-medium border transition-colors",
+                  inverse
+                    ? "border-on-inverse text-ink-on-inverse-muted hover:bg-white/5"
+                    : "border-hairline text-ink-secondary hover:bg-muted"
+                )}
+              >
+                Ask coordinator
+              </button>
+              <button
+                onClick={onReview}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full px-3.5 h-9 font-sans text-[12.5px] font-medium",
+                  inverse ? "bg-elevated text-ink hover:bg-canvas" : "bg-[var(--accent)] text-[var(--text-on-inverse)] hover:bg-[var(--accent-emphasis)]"
+                )}
+              >
+                <HandHelping size={13} strokeWidth={1.8} />
+                Offer to help
               </button>
             </>
           )}

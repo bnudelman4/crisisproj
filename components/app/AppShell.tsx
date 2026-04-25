@@ -69,6 +69,12 @@ export function AppShell({
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("") || "MR";
   const displayName = user?.name ?? "M. Rivas";
+  const isCoordinator = user?.role === "coordinator";
+  const roleLabel = isCoordinator ? "Coordinator" : "Member";
+  const roomLabel = isCoordinator
+    ? "Room 0142 · North Campus Mutual Aid"
+    : "North Campus · Mutual Aid";
+  const profileMenuLabel = isCoordinator ? "Coordinator profile" : "My profile";
 
   return (
     <div
@@ -90,7 +96,7 @@ export function AppShell({
           <Logo inverse={dark} />
           <span aria-hidden className={cn("h-4 w-px", dark ? "bg-white/10" : "bg-hairline")} />
           <span className={cn("font-mono text-[10.5px] tracking-[0.18em] uppercase truncate", dark ? "text-ink-on-inverse-muted" : "text-ink-tertiary")}>
-            Room 0142 · North Campus Mutual Aid
+            {roomLabel}
           </span>
         </div>
         <div className="flex items-center gap-3">
@@ -101,7 +107,7 @@ export function AppShell({
             </span>
             <kbd className={cn("font-mono text-[10px] ml-2 border px-1 rounded", dark ? "border-white/10 text-ink-on-inverse-muted" : "border-hairline text-ink-tertiary")}>⌘K</kbd>
           </div>
-          <LiveIndicator inverse={dark} label={`Coordinator · ${displayName}`} />
+          <LiveIndicator inverse={dark} label={`${roleLabel} · ${displayName}`} />
 
           {/* User menu */}
           <div className="relative" ref={menuRef}>
@@ -155,7 +161,7 @@ export function AppShell({
                   )}
                 >
                   <User size={13} strokeWidth={1.6} />
-                  Coordinator profile
+                  {profileMenuLabel}
                 </button>
                 <button
                   type="button"

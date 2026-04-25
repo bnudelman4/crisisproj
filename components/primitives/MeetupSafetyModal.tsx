@@ -9,6 +9,7 @@ import {
   safetyFlags,
 } from "@/lib/safety";
 import { SafetyScoreRing } from "./SafetyScore";
+import { useAuth } from "@/components/auth/AuthContext";
 import { cn } from "@/lib/cn";
 import {
   X,
@@ -106,11 +107,23 @@ function ModalContent({
   setChosen: (id: string) => void;
   onAction: (a: ModalAction, payload?: unknown) => void;
 }) {
+  const { user } = useAuth();
+  const isCoordinator = user?.role === "coordinator";
   const blocked = match.status === "blocked";
   const safetyDisplay = blocked
     ? Math.max(28, match.matchScore - 40)
     : Math.round((match.matchScore + 6) / 2 + 30);
   const band = bandFor(safetyDisplay);
+
+  const titleBlocked = isCoordinator
+    ? "We can't approve this match yet."
+    : "This match needs more details before you can help.";
+  const titleNormal = isCoordinator
+    ? "Review the meetup safety plan before messaging."
+    : "Plan a safer meetup before you head out.";
+  const intro = isCoordinator
+    ? "Bridge does not encourage strangers to meet blindly. Matches include a meetup safety check, privacy protection, public-handoff suggestions, and human approval before sensitive details are shared."
+    : "Bridge keeps everyone safer. Confirm the public meetup point, agree on the privacy posture, and a coordinator will broker the first message before any personal details are shared.";
 
   return (
     <div>
@@ -124,14 +137,10 @@ function ModalContent({
               Meetup Safety Check · {match.id.toUpperCase()}
             </span>
             <h2 id="safety-modal-title" className="mt-1 font-display text-[24px] leading-[1.05] text-ink" style={{ letterSpacing: "-0.02em", fontWeight: 500 }}>
-              {blocked
-                ? "We can't approve this match yet."
-                : "Review the meetup safety plan before messaging."}
+              {blocked ? titleBlocked : titleNormal}
             </h2>
             <p className="mt-1.5 text-[13px] leading-[1.55] text-ink-secondary max-w-[60ch]">
-              Bridge does not encourage strangers to meet blindly. Matches
-              include a meetup safety check, privacy protection, public-handoff
-              suggestions, and human approval before sensitive details are shared.
+              {intro}
             </p>
           </div>
         </div>
@@ -294,28 +303,32 @@ function ModalContent({
             onClick={() => onAction("request-info")}
             className="inline-flex items-center gap-1.5 rounded-full px-3 h-9 text-[12.5px] font-medium border border-hairline text-ink-secondary hover:bg-muted"
           >
-            Request more info
+            {isCoordinator ? "Request more info" : "Ask for clarification"}
           </button>
           <button
             onClick={() => onAction("change-location", chosen)}
             className="inline-flex items-center gap-1.5 rounded-full px-3 h-9 text-[12.5px] font-medium border border-hairline text-ink-secondary hover:bg-muted"
           >
-            Change location
+            {isCoordinator ? "Change location" : "Suggest a different spot"}
           </button>
-          <button
-            onClick={() => onAction("block")}
-            className="inline-flex items-center gap-1.5 rounded-full px-3 h-9 text-[12.5px] font-medium border border-[var(--signal-critical)]/30 text-[var(--signal-critical)] hover:bg-[var(--signal-critical)]/8"
-          >
-            <Ban size={13} strokeWidth={1.6} />
-            Block match
-          </button>
+          {isCoordinator && (
+            <button
+              onClick={() => onAction("block")}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 h-9 text-[12.5px] font-medium border border-[var(--signal-critical)]/30 text-[var(--signal-critical)] hover:bg-[var(--signal-critical)]/8"
+            >
+              <Ban size={13} strokeWidth={1.6} />
+              Block match
+            </button>
+          )}
           {!blocked && (
             <button
               onClick={() => onAction("approve", chosen)}
               className="inline-flex items-center gap-1.5 rounded-full px-4 h-9 text-[12.5px] font-medium bg-[var(--accent)] text-[var(--text-on-inverse)] hover:bg-[var(--accent-emphasis)]"
             >
               <ShieldCheck size={13} strokeWidth={1.6} />
-              Approve safety plan
+              {isCoordinator
+                ? "Approve safety plan"
+                : "I'll meet here · confirm plan"}
             </button>
           )}
         </div>
