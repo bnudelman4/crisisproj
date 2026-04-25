@@ -61,7 +61,7 @@ export default function FeedView({
           Feed legend
         </div>
         <p className="mt-2 text-[12.5px] leading-[1.55] text-ink-on-inverse-muted">
-          CrisisMesh does not encourage strangers to meet blindly. Matches include
+          Bridge does not encourage strangers to meet blindly. Matches include
           a meetup safety check, privacy protection, public-handoff suggestions,
           and human approval before sensitive details are shared.
         </p>

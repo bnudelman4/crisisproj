@@ -33,7 +33,7 @@ export default function Testimonials() {
               “
             </span>
             The hardest part of a campus crisis is not the response. It is the
-            routing. CrisisMesh is the first software that treats the routing
+            routing. Bridge is the first software that treats the routing
             as the actual problem.
             <span aria-hidden className="font-display text-ink-tertiary ml-1">
               ”

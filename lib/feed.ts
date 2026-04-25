@@ -120,7 +120,7 @@ export const feed: FeedItem[] = [
     postedAt: "4m",
     author: { name: "Leo M.", initials: "LM" },
     title: "Have a car · 2–5 PM · supply runs and rides",
-    body: "Based in Collegetown. Public handoffs only. Available for medical-related runs through CrisisMesh.",
+    body: "Based in Collegetown. Public handoffs only. Available for medical-related runs through Bridge.",
     urgency: "standard",
     reactions: { care: 6, help: 11 },
   },

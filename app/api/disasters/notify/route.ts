@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 const DEFAULT_RADIUS_KM = 50;
 const DEFAULT_BODY =
-  "CrisisMesh Alert: A crisis event has been detected near you. Reply with what you need or what you can provide.";
+  "Bridge Alert: A crisis event has been detected near you. Reply with what you need or what you can provide.";
 
 export async function POST(req: Request) {
   let body: Record<string, unknown>;

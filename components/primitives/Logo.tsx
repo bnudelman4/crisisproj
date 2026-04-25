@@ -39,7 +39,7 @@ export function Logo({
         )}
         style={{ letterSpacing: "-0.01em" }}
       >
-        CrisisMesh
+        Bridge
       </span>
     </div>
   );

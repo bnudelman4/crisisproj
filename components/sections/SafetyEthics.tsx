@@ -5,12 +5,12 @@ import { Reveal, RevealStack, RevealItem } from "@/components/motion/Reveal";
 import { Check } from "lucide-react";
 
 const tenets = [
-  "CrisisMesh supports human coordination. It does not replace emergency medical services or official emergency response.",
-  "CrisisMesh does not encourage strangers to meet blindly. Every match runs through a Meetup Safety Check before any messaging.",
+  "Bridge supports human coordination. It does not replace emergency medical services or official emergency response.",
+  "Bridge does not encourage strangers to meet blindly. Every match runs through a Meetup Safety Check before any messaging.",
   "Public handoff locations are recommended by default. Exact addresses, contact info, and sensitive details are hidden until a coordinator approves a Safer Handoff Plan.",
   "Ride requests, medical handoffs, and one-on-one meetups require additional precautions — buddy or coordinator contact, public pickup, trip sharing.",
   "Vulnerable-person flags trigger a remote check first. No in-person match is shown until phone or coordinator contact is attempted.",
-  "Identity verification in this demo is simulated and labelled as such. CrisisMesh does not pretend real verification exists.",
+  "Identity verification in this demo is simulated and labelled as such. Bridge does not pretend real verification exists.",
 ];
 
 export default function SafetyEthics() {
@@ -40,7 +40,7 @@ export default function SafetyEthics() {
         </Reveal>
         <Reveal delay={0.1}>
           <p className="mt-6 text-[15.5px] leading-[1.65] text-ink-secondary">
-            CrisisMesh is built for the routing problem. Emergency response is
+            Bridge is built for the routing problem. Emergency response is
             its own discipline with its own institutions. Below is what we
             commit to before a single coordinator opens the room.
           </p>

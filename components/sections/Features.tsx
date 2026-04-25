@@ -279,7 +279,7 @@ export default function Features() {
             className="md:col-span-6"
             icon={<UserCheck size={14} strokeWidth={1.5} />}
             title="Safer handoff plan + human approval"
-            body="Coordinators approve a privacy-protected meetup plan before any messaging. Public locations recommended. Exact addresses hidden until the plan is approved. CrisisMesh does not encourage strangers to meet blindly."
+            body="Coordinators approve a privacy-protected meetup plan before any messaging. Public locations recommended. Exact addresses hidden until the plan is approved. Bridge does not encourage strangers to meet blindly."
             meta="06 · The gate"
             visual={
               <div className="grid sm:grid-cols-2 gap-3">

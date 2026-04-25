@@ -50,7 +50,7 @@ export default function Problem() {
             <Reveal delay={0.22}>
               <p>
                 Most of that work happens in spreadsheets and group chats.
-                CrisisMesh replaces that with structured coordination data.
+                Bridge replaces that with structured coordination data.
               </p>
             </Reveal>
           </div>

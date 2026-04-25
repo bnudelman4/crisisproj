@@ -218,7 +218,7 @@ export default function HowItWorks() {
         <Beat
           number="03 · Meetup safety"
           title="Run a Meetup Safety Check, then approve a Safer Handoff Plan."
-          body="Before any messaging, every match runs through a Meetup Safety Check. CrisisMesh flags one-on-one meetups, private addresses, medical handoffs, ride requests, vulnerable requesters, nighttime risk, and isolated locations. Coordinators approve a public, privacy-protected Safer Handoff Plan before exact details are shared."
+          body="Before any messaging, every match runs through a Meetup Safety Check. Bridge flags one-on-one meetups, private addresses, medical handoffs, ride requests, vulnerable requesters, nighttime risk, and isolated locations. Coordinators approve a public, privacy-protected Safer Handoff Plan before exact details are shared."
           visual={
             <div className="space-y-3">
               {findMatch("match-sam-leo") && (

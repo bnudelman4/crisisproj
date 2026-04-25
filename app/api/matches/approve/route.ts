@@ -75,8 +75,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: "Provider not found." }, { status: 404 });
   }
 
-  const providerMessage = `CrisisMesh Match: You've been matched to help ${requestRow.type} near you. Please confirm by replying YES. Details: ${requestRow.description}`;
-  const requesterMessage = `CrisisMesh: Help is on the way for your ${requestRow.type} request. Your helper has been notified.`;
+  const providerMessage = `Bridge Match: You've been matched to help ${requestRow.type} near you. Please confirm by replying YES. Details: ${requestRow.description}`;
+  const requesterMessage = `Bridge: Help is on the way for your ${requestRow.type} request. Your helper has been notified.`;
 
   const sms = await Promise.all([
     sendSms(providerRow.phone, providerMessage).catch((e) => ({

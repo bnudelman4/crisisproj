@@ -20,7 +20,7 @@ interface CachedFeed {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __crisismeshFeed: CachedFeed | undefined;
+  var __bridgeFeed: CachedFeed | undefined;
 }
 
 const TTL_MS = 60_000;
@@ -98,7 +98,7 @@ async function fetchNws(): Promise<DisasterEvent[]> {
     const r = await fetch(NWS_URL, {
       headers: {
         Accept: "application/geo+json",
-        "User-Agent": "CrisisMesh (demo, contact: crisismesh@example.com)",
+        "User-Agent": "Bridge (demo, contact: bridge@example.com)",
       },
     });
     if (!r.ok) return [];
@@ -131,15 +131,15 @@ async function fetchNws(): Promise<DisasterEvent[]> {
 
 export async function getActiveDisasters(): Promise<DisasterEvent[]> {
   const now = Date.now();
-  if (global.__crisismeshFeed && now - global.__crisismeshFeed.fetchedAt < TTL_MS) {
-    return global.__crisismeshFeed.events;
+  if (global.__bridgeFeed && now - global.__bridgeFeed.fetchedAt < TTL_MS) {
+    return global.__bridgeFeed.events;
   }
   const [usgs, nws] = await Promise.all([fetchUsgs(), fetchNws()]);
   const events = [...usgs, ...nws];
-  global.__crisismeshFeed = { fetchedAt: now, events };
+  global.__bridgeFeed = { fetchedAt: now, events };
   return events;
 }
 
 export function getDisasterById(id: string): DisasterEvent | undefined {
-  return global.__crisismeshFeed?.events.find((e) => e.id === id);
+  return global.__bridgeFeed?.events.find((e) => e.id === id);
 }

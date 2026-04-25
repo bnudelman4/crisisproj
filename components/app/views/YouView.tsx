@@ -123,7 +123,7 @@ export default function YouView() {
           </h3>
           <p className="mt-2 text-[12.5px] leading-[1.55] text-ink-on-inverse-muted">
             Identity, phone, and past-assist counts shown here are simulated for
-            this demo. CrisisMesh does not pretend real verification exists.
+            this demo. Bridge does not pretend real verification exists.
           </p>
           <ul className="mt-4 space-y-2 text-[12.5px] text-ink-on-inverse">
             <li className="flex items-center gap-2"><Phone size={11} strokeWidth={1.6} className="text-ink-on-inverse-muted" /> Phone confirmed: simulated</li>
@@ -137,7 +137,7 @@ export default function YouView() {
             Disclaimer
           </span>
           <p className="mt-2 text-[12.5px] leading-[1.55] text-ink-on-inverse-muted">
-            CrisisMesh supports human coordination. It does not replace 911,
+            Bridge supports human coordination. It does not replace 911,
             emergency medical services, or official emergency response.
           </p>
         </div>

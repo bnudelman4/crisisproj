@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { AuthForm } from "@/components/auth/AuthForm";
 
 export const metadata = {
-  title: "Create account · CrisisMesh",
+  title: "Create account · Bridge",
 };
 
 export default function SignupPage() {

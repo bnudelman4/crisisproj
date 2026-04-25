@@ -3,13 +3,13 @@ import path from "node:path";
 import fs from "node:fs";
 
 const DB_DIR = path.join(process.cwd(), "data");
-const DB_PATH = path.join(DB_DIR, "crisismesh.db");
+const DB_PATH = path.join(DB_DIR, "bridge.db");
 
 if (!fs.existsSync(DB_DIR)) fs.mkdirSync(DB_DIR, { recursive: true });
 
 declare global {
   // eslint-disable-next-line no-var
-  var __crisismeshDb: Database.Database | undefined;
+  var __bridgeDb: Database.Database | undefined;
 }
 
 const SCHEMA_SQL = `
@@ -49,12 +49,12 @@ function init(db: Database.Database) {
 }
 
 export function getDb(): Database.Database {
-  if (!global.__crisismeshDb) {
+  if (!global.__bridgeDb) {
     const db = new Database(DB_PATH);
     init(db);
-    global.__crisismeshDb = db;
+    global.__bridgeDb = db;
   }
-  return global.__crisismeshDb;
+  return global.__bridgeDb;
 }
 
 export interface UserRow {

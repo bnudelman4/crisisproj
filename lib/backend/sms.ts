@@ -34,7 +34,7 @@ export function isTwilioConfigured(): boolean {
 export async function sendSms(to: string, body: string): Promise<SmsResult> {
   const ch = channel();
   if (!isTwilioConfigured()) {
-    console.log(`[CrisisMesh ${ch}:demo-mode] to=${to} body=${JSON.stringify(body)}`);
+    console.log(`[Bridge ${ch}:demo-mode] to=${to} body=${JSON.stringify(body)}`);
     return { to, sid: null, mode: "logged", channel: ch };
   }
   const client = twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!);

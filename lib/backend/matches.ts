@@ -8,14 +8,14 @@ export interface MatchRecord {
 
 declare global {
   // eslint-disable-next-line no-var
-  var __crisismeshMatches: Map<string, MatchRecord> | undefined;
+  var __bridgeMatches: Map<string, MatchRecord> | undefined;
 }
 
 function store(): Map<string, MatchRecord> {
-  if (!global.__crisismeshMatches) {
-    global.__crisismeshMatches = new Map();
+  if (!global.__bridgeMatches) {
+    global.__bridgeMatches = new Map();
   }
-  return global.__crisismeshMatches;
+  return global.__bridgeMatches;
 }
 
 export function recordMatch(requestId: number, providerId: number): MatchRecord {

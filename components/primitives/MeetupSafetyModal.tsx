@@ -61,7 +61,7 @@ export function MeetupSafetyModal({
     <AnimatePresence>
       {open && match && (
         <motion.div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4"
+          className="fixed inset-0 z-[10000] flex items-center justify-center p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -129,7 +129,7 @@ function ModalContent({
                 : "Review the meetup safety plan before messaging."}
             </h2>
             <p className="mt-1.5 text-[13px] leading-[1.55] text-ink-secondary max-w-[60ch]">
-              CrisisMesh does not encourage strangers to meet blindly. Matches
+              Bridge does not encourage strangers to meet blindly. Matches
               include a meetup safety check, privacy protection, public-handoff
               suggestions, and human approval before sensitive details are shared.
             </p>

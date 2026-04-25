@@ -62,7 +62,7 @@ export default function ProductPreview() {
           </Reveal>
           <Reveal delay={0.1}>
             <p className="text-[15.5px] leading-[1.65] text-ink-on-inverse-muted">
-              CrisisMesh is built around a Meetup Safety Check, not a
+              Bridge is built around a Meetup Safety Check, not a
               messaging-first feed. Every match is reviewed against a
               transparent set of safety flags — medical handoff, ride request,
               vulnerable requester, private address, nighttime — and a coordinator
@@ -86,7 +86,7 @@ export default function ProductPreview() {
 
         <div className="mt-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <p className="font-mono text-[10.5px] tracking-[0.18em] uppercase text-ink-on-inverse-muted max-w-[60ch]">
-            Demo · sample data. CrisisMesh does not encourage strangers to meet
+            Demo · sample data. Bridge does not encourage strangers to meet
             blindly. Sam → Leo runs through a meetup safety check; Nora's ride
             request is blocked until details are confirmed.
           </p>

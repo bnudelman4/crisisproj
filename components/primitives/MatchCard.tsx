@@ -89,54 +89,59 @@ export function MatchCard({
         </span>
       </header>
 
-      {/* Need + Helper */}
-      <div className="px-4 py-4 grid grid-cols-1 md:grid-cols-[1fr_1fr] gap-4">
-        <div>
-          <div className={cn("font-mono text-[10.5px] tracking-[0.14em] uppercase mb-1.5", inverse ? "text-ink-on-inverse-muted" : "text-ink-tertiary")}>
-            Need
+      {/* Need + Helper — container query so the layout adapts to its parent
+          width, not the viewport. In the dashboard's 360px right rail this
+          keeps stacked; in the modal's 670px column it splits in two. */}
+      <div className="@container">
+        <div className="px-4 py-4 grid grid-cols-1 @[420px]:grid-cols-[1fr_1fr] gap-4">
+          <div className="min-w-0">
+            <div className={cn("font-mono text-[10.5px] tracking-[0.14em] uppercase mb-1.5", inverse ? "text-ink-on-inverse-muted" : "text-ink-tertiary")}>
+              Need
+            </div>
+            <div className={cn("font-sans text-[14px] font-medium leading-[1.4]", inverse ? "text-ink-on-inverse" : "text-ink")}>
+              {match.needTitle}
+            </div>
+            <div className={cn("mt-1 text-[12.5px] leading-[1.5]", inverse ? "text-ink-on-inverse-muted" : "text-ink-secondary")}>
+              {match.needSummary}
+            </div>
+            <div className={cn("mt-2 flex items-center gap-1.5 flex-wrap font-mono text-[10.5px] tracking-[0.14em] uppercase", inverse ? "text-ink-on-inverse-muted" : "text-ink-tertiary")}>
+              <span>{match.requester.initials}</span>
+              <span aria-hidden>·</span>
+              <span className="truncate">{match.requester.zone}</span>
+              {match.requester.privateAddress && (
+                <>
+                  <span aria-hidden>·</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Lock size={10} strokeWidth={1.6} /> Address hidden
+                  </span>
+                </>
+              )}
+            </div>
           </div>
-          <div className={cn("font-sans text-[14px] font-medium leading-[1.4]", inverse ? "text-ink-on-inverse" : "text-ink")}>
-            {match.needTitle}
-          </div>
-          <div className={cn("mt-1 text-[12.5px] leading-[1.5]", inverse ? "text-ink-on-inverse-muted" : "text-ink-secondary")}>
-            {match.needSummary}
-          </div>
-          <div className={cn("mt-2 flex items-center gap-1.5 font-mono text-[10.5px] tracking-[0.14em] uppercase", inverse ? "text-ink-on-inverse-muted" : "text-ink-tertiary")}>
-            <span>{match.requester.initials}</span>
-            <span aria-hidden>·</span>
-            <span>{match.requester.zone}</span>
-            {match.requester.privateAddress && (
-              <>
-                <span aria-hidden>·</span>
-                <span className="inline-flex items-center gap-1">
-                  <Lock size={10} strokeWidth={1.6} /> Address hidden
-                </span>
-              </>
-            )}
-          </div>
-        </div>
-        <div>
-          <div className={cn("font-mono text-[10.5px] tracking-[0.14em] uppercase mb-1.5", inverse ? "text-ink-on-inverse-muted" : "text-ink-tertiary")}>
-            Helper · {match.matchScore}% match
-          </div>
-          <div className={cn("font-sans text-[14px] font-medium leading-[1.4]", inverse ? "text-ink-on-inverse" : "text-ink")}>
-            {match.helper.name}
-          </div>
-          <div className={cn("mt-1 text-[12.5px] leading-[1.5]", inverse ? "text-ink-on-inverse-muted" : "text-ink-secondary")}>
-            {match.helper.role} · {match.helper.distance} · {match.helper.availability}
-          </div>
-          <div className={cn("mt-2 flex items-center gap-2 font-mono text-[10.5px] tracking-[0.14em] uppercase", inverse ? "text-ink-on-inverse-muted" : "text-ink-tertiary")}>
-            <span>Demo profile</span>
-            <span aria-hidden>·</span>
-            <span>Past assists {match.helper.pastAssists}</span>
+          <div className="min-w-0">
+            <div className={cn("font-mono text-[10.5px] tracking-[0.14em] uppercase mb-1.5", inverse ? "text-ink-on-inverse-muted" : "text-ink-tertiary")}>
+              Helper · {match.matchScore}% match
+            </div>
+            <div className={cn("font-sans text-[14px] font-medium leading-[1.4]", inverse ? "text-ink-on-inverse" : "text-ink")}>
+              {match.helper.name}
+            </div>
+            <div className={cn("mt-1 text-[12.5px] leading-[1.5] break-words", inverse ? "text-ink-on-inverse-muted" : "text-ink-secondary")}>
+              {match.helper.role} · {match.helper.distance} · {match.helper.availability}
+            </div>
+            <div className={cn("mt-2 flex items-center gap-2 flex-wrap font-mono text-[10.5px] tracking-[0.14em] uppercase", inverse ? "text-ink-on-inverse-muted" : "text-ink-tertiary")}>
+              <span>Demo profile</span>
+              <span aria-hidden>·</span>
+              <span>Past assists {match.helper.pastAssists}</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Safety strip */}
+      {/* Safety strip — container query so the score ring + flags stack
+          vertically when the card is in a narrow rail */}
       <div
         className={cn(
-          "px-4 py-4 border-t grid grid-cols-1 md:grid-cols-[auto_1fr] gap-4 items-center",
+          "@container px-4 py-4 border-t grid grid-cols-1 @[420px]:grid-cols-[auto_1fr] gap-4 items-center",
           inverse ? "border-on-inverse bg-[color:var(--bg-inverse-elevated)]" : "border-hairline bg-muted/30"
         )}
       >

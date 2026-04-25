@@ -10,9 +10,9 @@ const SYSTEM_PROMPT =
   "You are a crisis intake classifier. Given a text message reply, classify it as either a need or an offer to help. Return ONLY JSON: { type: 'need'|'provider', category: 'food|ride|medicine|shelter|money|time|skill|info|other', description: string, urgency: 1-5 }. No markdown.";
 
 const TWIML_OK =
-  '<?xml version="1.0" encoding="UTF-8"?><Response><Message>Thanks — CrisisMesh recorded your reply. A coordinator will follow up.</Message></Response>';
+  '<?xml version="1.0" encoding="UTF-8"?><Response><Message>Thanks — Bridge recorded your reply. A coordinator will follow up.</Message></Response>';
 const TWIML_ERR =
-  '<?xml version="1.0" encoding="UTF-8"?><Response><Message>CrisisMesh could not process your reply. Please try again.</Message></Response>';
+  '<?xml version="1.0" encoding="UTF-8"?><Response><Message>Bridge could not process your reply. Please try again.</Message></Response>';
 
 const NEED_CATS = ["food", "ride", "medicine", "shelter", "info", "other"];
 const PROVIDER_CATS = ["car", "food", "money", "time", "skill"];
@@ -107,13 +107,13 @@ export async function POST(req: Request) {
     .get(from) as UserRow | undefined;
 
   if (!user) {
-    console.log(`[CrisisMesh SMS:inbound] unknown sender ${from}: ${text}`);
+    console.log(`[Bridge SMS:inbound] unknown sender ${from}: ${text}`);
     return twiml(TWIML_OK);
   }
 
   const classified = await classify(text);
   if (!classified) {
-    console.log(`[CrisisMesh SMS:inbound] classify failed for ${from}: ${text}`);
+    console.log(`[Bridge SMS:inbound] classify failed for ${from}: ${text}`);
     return twiml(TWIML_ERR, 200);
   }
 
@@ -129,7 +129,7 @@ export async function POST(req: Request) {
   }
 
   console.log(
-    `[CrisisMesh SMS:inbound] ${from} → ${classified.type}/${classified.category} (urgency ${classified.urgency})`
+    `[Bridge SMS:inbound] ${from} → ${classified.type}/${classified.category} (urgency ${classified.urgency})`
   );
   return twiml(TWIML_OK);
 }

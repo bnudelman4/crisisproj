@@ -46,7 +46,7 @@ export default function AppRoute() {
         <ProductApp initialTab="feed" />
 
         <p className="mt-6 font-mono text-[10.5px] tracking-[0.18em] uppercase text-ink-on-inverse-muted text-center">
-          CrisisMesh supports human coordination. It does not replace 911,
+          Bridge supports human coordination. It does not replace 911,
           emergency medical services, or official emergency response.
         </p>
       </div>

@@ -118,7 +118,7 @@ export default function IntroParallax() {
                 <div className="inline-flex items-center gap-3 font-mono text-[11px] tracking-[0.18em] uppercase text-ink-on-inverse-muted">
                   <LiveIndicator inverse label="LIVE COORDINATION" />
                   <span aria-hidden className="h-px w-6" style={{ background: "rgba(255,255,255,0.18)" }} />
-                  <span>CrisisMesh · Coordination Infrastructure</span>
+                  <span>Bridge · Coordination Infrastructure</span>
                 </div>
               </div>
 
@@ -142,7 +142,7 @@ export default function IntroParallax() {
                 style={{ textShadow: "0 1px 14px rgba(0,0,0,0.6)" }}
               >
                 Crisis coordination software with a Meetup Safety Check at
-                every step. CrisisMesh turns scattered messages from SMS,
+                every step. Bridge turns scattered messages from SMS,
                 GroupMe, Discord, and forms into structured, privacy-protected
                 matches a coordinator can approve.
               </p>

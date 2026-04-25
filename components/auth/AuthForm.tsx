@@ -109,7 +109,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
             Coordination, not chaos.
           </h1>
           <p className="mt-4 text-[15px] leading-[1.6] text-ink-on-inverse-muted">
-            CrisisMesh is the coordinator-facing command center for community
+            Bridge is the coordinator-facing command center for community
             crisis response. Sign in to access live intake, AI matches, and
             the Meetup Safety Check before any messaging goes out.
           </p>
@@ -183,7 +183,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
                 autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="coordinator@crisismesh.local"
+                placeholder="coordinator@bridge.local"
                 className="w-full bg-transparent border-0 outline-none text-[15px] text-ink-on-inverse placeholder:text-ink-on-inverse-muted/70"
               />
             </Field>
@@ -243,7 +243,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
           </p>
 
           <p className="mt-10 font-mono text-[10.5px] tracking-[0.18em] uppercase text-ink-on-inverse-muted">
-            CrisisMesh supports human coordination. It does not replace 911,
+            Bridge supports human coordination. It does not replace 911,
             emergency medical services, or official emergency response.
           </p>
         </motion.form>

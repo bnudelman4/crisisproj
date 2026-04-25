@@ -34,7 +34,7 @@ type AuthState = {
 
 const Ctx = createContext<AuthState | null>(null);
 
-const STORAGE_KEY = "crisismesh:user";
+const STORAGE_KEY = "bridge:user";
 
 function load(): AuthUser | null {
   if (typeof window === "undefined") return null;

@@ -142,7 +142,7 @@ export function AppShell({
                 <div className={cn("px-3 py-2.5 border-b", dark ? "border-on-inverse" : "border-hairline")}>
                   <div className="text-[12.5px] font-medium truncate">{displayName}</div>
                   <div className={cn("text-[11px] truncate", dark ? "text-ink-on-inverse-muted" : "text-ink-tertiary")}>
-                    {user?.email ?? "coordinator@crisismesh.local"}
+                    {user?.email ?? "coordinator@bridge.local"}
                   </div>
                 </div>
                 <button

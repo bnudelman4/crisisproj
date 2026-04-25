@@ -26,12 +26,12 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CrisisMesh — Coordination, not chaos.",
+  title: "Bridge — Coordination, not chaos.",
   description:
-    "Crisis coordination software with a human approval gate at every step. CrisisMesh turns scattered messages from SMS, GroupMe, Discord, and forms into structured, prioritized dispatches a coordinator can approve.",
-  metadataBase: new URL("https://crisismesh.local"),
+    "Crisis coordination software with a human approval gate at every step. Bridge turns scattered messages from SMS, GroupMe, Discord, and forms into structured, prioritized dispatches a coordinator can approve.",
+  metadataBase: new URL("https://bridge.local"),
   openGraph: {
-    title: "CrisisMesh — Coordination, not chaos.",
+    title: "Bridge — Coordination, not chaos.",
     description:
       "Crisis coordination software with a human approval gate at every step.",
     type: "website",

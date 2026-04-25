@@ -83,7 +83,7 @@ export default function Hero() {
           <div className="inline-flex items-center gap-3 font-mono text-[11px] tracking-[0.18em] uppercase text-ink-on-inverse-muted">
             <LiveIndicator inverse label="LIVE COORDINATION" />
             <span aria-hidden className="h-px w-6" style={{ background: "rgba(255,255,255,0.18)" }} />
-            <span>CrisisMesh · Coordination Infrastructure</span>
+            <span>Bridge · Coordination Infrastructure</span>
           </div>
         </motion.div>
 
@@ -110,7 +110,7 @@ export default function Hero() {
           className="mt-7 max-w-[560px] text-[17px] leading-[1.55] text-ink-on-inverse-muted font-sans"
         >
           Crisis coordination software with a Meetup Safety Check at every
-          step. CrisisMesh turns scattered messages from SMS, GroupMe,
+          step. Bridge turns scattered messages from SMS, GroupMe,
           Discord, and forms into structured, privacy-protected matches a
           coordinator can approve.
         </motion.p>

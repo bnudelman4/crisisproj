@@ -25,7 +25,7 @@ const columns = [
     items: [
       { label: "Cornell Claude Builders", href: "#" },
       { label: "Hackathon · 2026", href: "#" },
-      { label: "Contact", href: "mailto:hello@crisismesh.local" },
+      { label: "Contact", href: "mailto:hello@bridge.local" },
     ],
   },
 ];
@@ -37,7 +37,7 @@ export default function Footer() {
         <div className="md:col-span-5 flex flex-col gap-5">
           <Logo />
           <p className="max-w-[44ch] text-[13.5px] leading-[1.65] text-ink-secondary">
-            CrisisMesh is coordination infrastructure for community crisis
+            Bridge is coordination infrastructure for community crisis
             response — built around a human approval gate, not around it.
           </p>
           <div className="flex items-center gap-3">
@@ -45,7 +45,7 @@ export default function Footer() {
               href="#"
               className="inline-flex items-center gap-2 h-8 px-3 rounded-full border border-hairline text-[12px] text-ink-secondary hover:text-ink hover:border-[var(--border-strong)] transition-colors"
             >
-              github.com/crisismesh
+              github.com/bridge
               <ArrowUpRight size={12} strokeWidth={1.5} />
             </a>
           </div>
@@ -77,11 +77,11 @@ export default function Footer() {
       <div className="border-t border-hairline">
         <div className="mx-auto max-w-[1280px] px-6 md:px-10 py-6 grid md:grid-cols-2 gap-4 items-center">
           <p className="text-[12px] leading-[1.6] text-ink-secondary max-w-[64ch]">
-            CrisisMesh supports human coordination. It does not replace 911,
+            Bridge supports human coordination. It does not replace 911,
             emergency medical services, or official emergency response.
           </p>
           <p className="font-mono text-[10.5px] tracking-[0.18em] uppercase text-ink-tertiary md:text-right">
-            © 2026 CrisisMesh · Cornell Claude Builders Hackathon
+            © 2026 Bridge · Cornell Claude Builders Hackathon
           </p>
         </div>
       </div>

@@ -65,7 +65,7 @@ export default function Nav() {
       )}
     >
       <div className="mx-auto max-w-[1280px] px-6 md:px-10 h-[64px] flex items-center justify-between gap-6">
-        <a href="#" className="flex items-center" aria-label="CrisisMesh home">
+        <a href="#" className="flex items-center" aria-label="Bridge home">
           <Logo inverse={inverse} />
         </a>
 
