@@ -113,7 +113,7 @@ export default function CrisisMap({
     let active = true;
     async function load() {
       try {
-        const res = await fetch("/api/map/data", { cache: "no-store" });
+        const res = await fetch("/api/map", { cache: "no-store" });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const json = (await res.json()) as MapPayload;
         if (active) {

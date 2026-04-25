@@ -110,7 +110,7 @@ export default function DashboardPage() {
 
   async function fetchData(): Promise<MapPayload | null> {
     try {
-      const res = await fetch("/api/map/data", { cache: "no-store" });
+      const res = await fetch("/api/map", { cache: "no-store" });
       if (!res.ok) return null;
       const json = (await res.json()) as MapPayload;
       setPayload(json);
