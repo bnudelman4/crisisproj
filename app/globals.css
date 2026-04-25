@@ -1,26 +1,199 @@
 @import "tailwindcss";
+@import "leaflet/dist/leaflet.css";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-canvas: #FAFAF7;
+  --bg-elevated: #FFFFFF;
+  --bg-muted: #F2F2EE;
+  --bg-inverse: #000000;
+  --bg-inverse-card: #0E0E0E;
+  --bg-inverse-elevated: #141414;
+
+  --text-primary: #0A0E1A;
+  --text-secondary: #4B5563;
+  --text-tertiary: #9CA3AF;
+  --text-on-inverse: #F3F4F6;
+  --text-on-inverse-muted: #A0A0A0;
+
+  --border-hairline: #E5E5E0;
+  --border-strong: #1F1F1F;
+  --border-on-inverse: #1F1F1F;
+
+  --accent: #0A0E1A;
+  --accent-emphasis: #5B8DEF;
+  --signal-critical: #EF4444;
+  --signal-warning: #F59E0B;
+  --signal-success: #10B981;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-canvas: var(--bg-canvas);
+  --color-elevated: var(--bg-elevated);
+  --color-muted: var(--bg-muted);
+  --color-inverse: var(--bg-inverse);
+  --color-inverse-card: var(--bg-inverse-card);
+  --color-inverse-elevated: var(--bg-inverse-elevated);
+
+  --color-ink: var(--text-primary);
+  --color-ink-secondary: var(--text-secondary);
+  --color-ink-tertiary: var(--text-tertiary);
+  --color-ink-on-inverse: var(--text-on-inverse);
+  --color-ink-on-inverse-muted: var(--text-on-inverse-muted);
+
+  --color-hairline: var(--border-hairline);
+  --color-strong: var(--border-strong);
+  --color-on-inverse: var(--border-on-inverse);
+
+  --color-accent: var(--accent);
+  --color-accent-emphasis: var(--accent-emphasis);
+  --color-critical: var(--signal-critical);
+  --color-warning: var(--signal-warning);
+  --color-success: var(--signal-success);
+
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-fraunces);
+  --font-mono: var(--font-jetbrains);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+html, body {
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+html {
+  scroll-behavior: auto;
+  position: relative;
+}
+
+/* Lenis */
+html.lenis, html.lenis body { height: auto; }
+.lenis.lenis-smooth { scroll-behavior: auto !important; }
+.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
+.lenis.lenis-stopped { overflow: clip; }
+.lenis.lenis-smooth iframe { pointer-events: none; }
+
+::selection {
+  background: var(--text-primary);
+  color: var(--bg-canvas);
+}
+
+.editorial-image {
+  filter: saturate(0.7) contrast(1.05) brightness(0.97);
+}
+
+.font-display {
+  font-family: var(--font-fraunces), ui-serif, Georgia, serif;
+  font-optical-sizing: auto;
+  font-variation-settings: "opsz" 144;
+}
+
+.font-mono {
+  font-family: var(--font-jetbrains), ui-monospace, SFMono-Regular, monospace;
+}
+
+.tracking-display {
+  letter-spacing: -0.03em;
+  line-height: 0.95;
+}
+
+.eyebrow {
+  font-family: var(--font-inter), sans-serif;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.eyebrow-on-inverse {
+  color: var(--text-on-inverse-muted);
+}
+
+.hairline {
+  border-color: var(--border-hairline);
+}
+
+.grain {
+  position: relative;
+}
+.grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.6 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(1.25); }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 2.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.scrollbar-none::-webkit-scrollbar { display: none; }
+.scrollbar-none { scrollbar-width: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* ── Leaflet brand overrides ─────────────────────────────────────────── */
+.leaflet-container {
+  font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+.leaflet-tooltip {
+  background: rgba(20, 20, 20, 0.92);
+  color: #f3f4f6;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 20px -8px rgba(0, 0, 0, 0.6);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+}
+.leaflet-tooltip-top:before {
+  border-top-color: rgba(20, 20, 20, 0.92);
+}
+.leaflet-popup-content-wrapper {
+  background: #fafaf7;
+  color: #0a0e1a;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.6);
+}
+.leaflet-popup-content {
+  margin: 12px 14px;
+}
+.leaflet-popup-tip {
+  background: #fafaf7;
+}
+.leaflet-popup-close-button {
+  color: #6b7280 !important;
+  padding: 6px 8px !important;
+}
+.leaflet-control-zoom {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: rgba(0, 0, 0, 0.55) !important;
+  backdrop-filter: blur(8px);
+}
+.leaflet-control-zoom a {
+  background: transparent !important;
+  color: #f3f4f6 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+.leaflet-control-zoom a:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
 }

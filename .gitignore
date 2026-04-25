@@ -39,3 +39,14 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local SQLite (better-sqlite3) — runtime state, never commit
+/data/
+
+# Local env
+.env.local
+.env*.local
+
+# Playwright artifacts
+.playwright-mcp/
+*.png
