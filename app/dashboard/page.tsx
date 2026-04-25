@@ -1,44 +1,43 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertTriangle,
+  BellDot,
   CheckCircle2,
+  ChevronDown,
+  CircleUserRound,
   HandHeart,
-  Loader2,
-  LogIn,
+  ListOrdered,
   LogOut,
-  Radio,
+  MapPinned,
+  Plus,
   RefreshCw,
+  Search,
+  Send,
   ShieldAlert,
-  Users,
-  HeartPulse,
-  Handshake,
-  Map as MapIcon,
-  UserCircle2,
-  ClipboardList,
+  ShieldCheck,
+  User as UserIcon,
 } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { NeedType, ResourceType } from "@/lib/types";
-import { NEED_ICON, RESOURCE_ICON, urgencyColors } from "@/lib/icons";
+import { NEED_ICON, urgencyColors } from "@/lib/icons";
 
 const CrisisMap = dynamic(() => import("@/components/map/CrisisMap"), {
   ssr: false,
   loading: () => (
-    <div className="h-[560px] flex items-center justify-center text-muted-foreground border border-border rounded-lg">
+    <div className="h-[560px] flex items-center justify-center text-ink-on-inverse-muted">
       Loading map...
     </div>
   ),
 });
 
 const REFRESH_MS = 15_000;
+type Tab = "map" | "feed" | "compose" | "alerts" | "you";
 
 interface MapRequest {
   id: number;
@@ -89,15 +88,14 @@ interface SessionUser {
 }
 
 const NEED_TYPES: NeedType[] = ["food", "ride", "medicine", "shelter", "info", "other"];
-const RESOURCE_TYPES: ResourceType[] = ["car", "food", "money", "time", "skill"];
-
 function coerceNeedType(v: string): NeedType {
   return (NEED_TYPES as string[]).includes(v) ? (v as NeedType) : "other";
 }
+const RESOURCE_TYPES: ResourceType[] = ["car", "food", "money", "time", "skill"];
 function coerceResourceType(v: string): ResourceType {
   return (RESOURCE_TYPES as string[]).includes(v) ? (v as ResourceType) : "skill";
 }
-function clampUrgency(u: number): 1 | 2 | 3 | 4 | 5 {
+function clampU(u: number): 1 | 2 | 3 | 4 | 5 {
   return Math.max(1, Math.min(5, Math.round(u))) as 1 | 2 | 3 | 4 | 5;
 }
 
@@ -107,21 +105,17 @@ export default function DashboardPage() {
   const [user, setUser] = useState<SessionUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [locationLabel, setLocationLabel] = useState<string>("");
+  const [tab, setTab] = useState<Tab>("feed");
 
   async function fetchData(): Promise<MapPayload | null> {
     try {
       const res = await fetch("/api/map/data", { cache: "no-store" });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) return null;
       const json = (await res.json()) as MapPayload;
       setPayload(json);
-      setError(null);
-      setLastUpdated(new Date());
       return json;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "fetch failed");
+    } catch {
       return null;
     }
   }
@@ -151,7 +145,7 @@ export default function DashboardPage() {
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
-    setUser(null);
+    router.replace("/login");
     router.refresh();
   }
 
@@ -164,7 +158,6 @@ export default function DashboardPage() {
       setSeeding(false);
     }
   }
-
   async function runReset() {
     setSeeding(true);
     try {
@@ -196,131 +189,90 @@ export default function DashboardPage() {
 
   if (loading || !payload) {
     return (
-      <main className="min-h-screen flex items-center justify-center text-muted-foreground gap-2">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        {seeding ? "Seeding demo data..." : "Loading dashboard..."}
+      <main className="min-h-[100svh] flex items-center justify-center bg-canvas">
+        <div className="font-mono text-[10.5px] tracking-[0.18em] uppercase text-ink-tertiary">
+          {seeding ? "Seeding demo data..." : "Loading dashboard..."}
+        </div>
       </main>
     );
   }
-
-  const requestById = new Map(payload.requests.map((r) => [r.id, r]));
-  const providerById = new Map(payload.providers.map((p) => [p.id, p]));
 
   const matchedRequestIds = new Set<number>([
     ...payload.matches.filter((m) => m.status !== "proposed").map((m) => m.requestId),
     ...payload.requests.filter((r) => r.status === "matched" || r.status === "completed").map((r) => r.id),
   ]);
 
-  const queueRequests = [...payload.requests]
-    .filter((r) => !user || r.userId !== user.id)
-    .sort((a, b) => b.urgency - a.urgency);
-  const sortedRequests = queueRequests;
-
-  const summary = {
-    totalNeeds: payload.requests.length,
-    totalResources: payload.providers.length,
-    urgentCases: payload.requests.filter((r) => r.urgency >= 4).length,
-    safeMatches: payload.matches.filter((m) => !m.safetyFlag).length,
-  };
+  const unreadAlerts = payload.matches.filter(
+    (m) => m.status === "helper_accepted" && user && m.requestUserId === user.id
+  ).length;
 
   return (
-    <main className="min-h-screen pb-16">
-      <Ticker summary={summary} lastUpdated={lastUpdated} error={error} user={user} onLogout={logout} />
-
-      <div className="container max-w-7xl py-8">
-        <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
-          <div>
-            <div className="flex items-center gap-2 text-primary mb-1">
-              <Radio className="h-4 w-4 animate-pulse" />
-              <span className="text-xs uppercase tracking-[0.2em] font-semibold">Live Command Center</span>
-            </div>
-            <h1 className="text-3xl font-bold tracking-tight">CrisisMesh</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {locationLabel || (user ? `${user.lat.toFixed(2)}, ${user.lng.toFixed(2)}` : "Your area")} · auto-refreshes every 15s · WhatsApp replies feed in live
+    <main
+      className="relative min-h-[100svh] w-full"
+      style={{
+        background:
+          "radial-gradient(60% 40% at 50% 0%, rgba(91,141,239,0.10) 0%, var(--bg-inverse) 60%)",
+        color: "var(--text-on-inverse)",
+      }}
+    >
+      <div className="relative mx-auto max-w-[1280px] px-4 md:px-8 pt-10 pb-16">
+        <header className="flex items-center justify-between gap-4 mb-6">
+          <div className="min-w-0">
+            <span className="font-mono text-[10.5px] tracking-[0.18em] uppercase text-ink-on-inverse-muted">
+              Bridge · live coordination
+            </span>
+            <h1
+              className="mt-1 font-display text-ink-on-inverse"
+              style={{ fontWeight: 500, fontSize: "clamp(26px, 3vw, 34px)", letterSpacing: "-0.025em", lineHeight: 1.05 }}
+            >
+              {user ? `Hey ${user.name.split(" ")[0]} — what's happening near you.` : "Coordination, not chaos."}
+            </h1>
+            <p className="mt-2 text-[13.5px] text-ink-on-inverse-muted">
+              {locationLabel || (user ? `${user.lat.toFixed(2)}, ${user.lng.toFixed(2)}` : "Your area")} · auto-refreshes every 15s
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={fetchData} className="gap-2">
-              <RefreshCw className="h-4 w-4" /> Refresh
-            </Button>
-          </div>
-        </div>
+          <button
+            onClick={fetchData}
+            className="hidden md:inline-flex items-center gap-2 h-8 px-3 rounded-md border border-on-inverse text-ink-on-inverse hover:bg-white/[0.05] text-[12.5px]"
+          >
+            <RefreshCw size={13} strokeWidth={1.6} /> Refresh
+          </button>
+        </header>
 
-        <SummaryBar summary={summary} />
+        <AppShell
+          active={tab}
+          onNavigate={setTab}
+          alertsCount={unreadAlerts}
+          user={user}
+          onLogout={logout}
+        >
+          {tab === "map" && <MapTab user={user} onChange={fetchData} />}
+          {tab === "feed" && (
+            <FeedTab
+              payload={payload}
+              user={user}
+              matchedRequestIds={matchedRequestIds}
+              onChange={fetchData}
+            />
+          )}
+          {tab === "compose" && <ComposeTab user={user} />}
+          {tab === "alerts" && (
+            <AlertsTab payload={payload} user={user} onChange={fetchData} />
+          )}
+          {tab === "you" && <YouTab payload={payload} user={user} onChange={fetchData} />}
+        </AppShell>
 
-        <UnmatchedAlert requests={sortedRequests} matchedRequestIds={matchedRequestIds} />
-
-        {user && (
-          <MyActivity
-            user={user}
-            requests={payload.requests}
-            matches={payload.matches}
-            onChange={fetchData}
-          />
-        )}
-
-        <section className="mt-6">
-          <div className="flex items-center gap-2 mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            <MapIcon className="h-4 w-4" /> Live Map · {locationLabel || "Your area"}
-          </div>
-          <CrisisMap user={user} onChange={fetchData} />
-        </section>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-          <section>
-            <SectionTitle icon={<HeartPulse className="h-4 w-4" />} label="Urgency Queue" count={sortedRequests.length} />
-            <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
-              {sortedRequests.length === 0 && <EmptyHint text="No needs detected." />}
-              {sortedRequests.map((r, i) => (
-                <NeedCard
-                  key={r.id}
-                  request={r}
-                  index={i}
-                  matched={matchedRequestIds.has(r.id)}
-                  user={user}
-                  onAccepted={fetchData}
-                />
-              ))}
-            </div>
-          </section>
-
-          <section>
-            <SectionTitle icon={<Handshake className="h-4 w-4" />} label="Match Board" count={payload.matches.length} />
-            <div className="space-y-3 max-h-[640px] overflow-y-auto pr-1">
-              {payload.matches.length === 0 && (
-                <EmptyHint text="No matches proposed yet." />
-              )}
-              {payload.matches.map((m, i) => (
-                <MatchCard
-                  key={m.id}
-                  match={m}
-                  index={i}
-                  request={requestById.get(m.requestId)}
-                  provider={m.providerId !== null ? providerById.get(m.providerId) : undefined}
-                  user={user}
-                  onChange={fetchData}
-                />
-              ))}
-            </div>
-          </section>
-        </div>
-
-        <section className="mt-6">
-          <SectionTitle icon={<Users className="h-4 w-4" />} label="Available Resources" count={payload.providers.length} />
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {payload.providers.length === 0 && <EmptyHint text="No resources detected." />}
-            {payload.providers.map((p, i) => (
-              <ResourceCard key={p.id} provider={p} index={i} />
-            ))}
-          </div>
-        </section>
+        <p className="mt-6 font-mono text-[10.5px] tracking-[0.18em] uppercase text-ink-on-inverse-muted text-center">
+          Bridge supports human coordination. It does not replace 911 or official emergency response.
+        </p>
       </div>
+
       <button
         type="button"
         onClick={runReset}
         disabled={seeding}
         title="Reset demo data"
-        className="fixed bottom-2 right-2 z-50 text-[9px] uppercase tracking-wider text-muted-foreground/30 hover:text-muted-foreground transition-colors px-1.5 py-0.5 rounded"
+        className="fixed bottom-2 right-2 z-50 text-[9px] uppercase tracking-wider text-ink-on-inverse-muted/30 hover:text-ink-on-inverse-muted transition-colors px-1.5 py-0.5 rounded"
       >
         {seeding ? "resetting…" : "reset"}
       </button>
@@ -328,220 +280,597 @@ export default function DashboardPage() {
   );
 }
 
-function Ticker({
-  summary,
-  lastUpdated,
-  error,
+function AppShell({
+  children,
+  active,
+  onNavigate,
+  alertsCount,
   user,
   onLogout,
 }: {
-  summary: { totalNeeds: number; totalResources: number; urgentCases: number; safeMatches: number };
-  lastUpdated: Date | null;
-  error: string | null;
+  children: React.ReactNode;
+  active: Tab;
+  onNavigate: (t: Tab) => void;
+  alertsCount: number;
   user: SessionUser | null;
   onLogout: () => void;
 }) {
-  const items = [
-    { label: "Needs", value: summary.totalNeeds },
-    { label: "Helpers", value: summary.totalResources },
-    { label: "Urgent", value: summary.urgentCases },
-    { label: "Safe matches", value: summary.safeMatches },
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [menuOpen]);
+
+  const initials = user?.name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .join("") || "??";
+  const displayName = user?.name ?? "Anonymous";
+  const tabs: Array<{ id: Tab; label: string; icon: typeof MapPinned }> = [
+    { id: "map", label: "Map", icon: MapPinned },
+    { id: "feed", label: "Feed", icon: ListOrdered },
+    { id: "compose", label: "Compose", icon: Plus },
+    { id: "alerts", label: "Alerts", icon: BellDot },
+    { id: "you", label: "You", icon: CircleUserRound },
   ];
+
   return (
-    <div className="border-b border-border bg-card/50 backdrop-blur sticky top-0 z-10">
-      <div className="container max-w-7xl py-2 flex items-center gap-6 overflow-x-auto text-sm">
-        <span className="flex items-center gap-2 text-primary font-semibold">
-          <span className="h-2 w-2 rounded-full bg-primary animate-pulse" /> LIVE
-        </span>
-        {items.map((it) => (
-          <span key={it.label} className="flex items-center gap-2 whitespace-nowrap">
-            <span className="text-muted-foreground">{it.label}</span>
-            <span className="font-mono font-semibold">{it.value}</span>
+    <div
+      className="rounded-3xl overflow-hidden border bg-inverse-card shadow-[0_30px_120px_-30px_rgba(0,0,0,0.55)]"
+      style={{ borderColor: "var(--border-strong)" }}
+    >
+      <div className="flex items-center justify-between gap-4 px-4 py-3 border-b border-on-inverse">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="inline-flex items-center gap-2.5">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-on-inverse">
+              <span className="h-1.5 w-1.5 rounded-full bg-accent-emphasis animate-pulse" />
+            </span>
+            <span className="font-display text-[16px] tracking-display text-ink-on-inverse" style={{ fontWeight: 500 }}>
+              Bridge
+            </span>
+          </div>
+          <span aria-hidden className="h-4 w-px bg-white/10" />
+          <span className="font-mono text-[10.5px] tracking-[0.18em] uppercase truncate text-ink-on-inverse-muted">
+            Live mutual aid · room
           </span>
-        ))}
-        {lastUpdated && (
-          <span className="ml-auto text-xs text-muted-foreground">
-            updated {lastUpdated.toLocaleTimeString()}
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="hidden md:flex items-center gap-2 px-2.5 h-7 rounded-md border border-on-inverse">
+            <Search size={12} strokeWidth={1.6} className="text-ink-on-inverse-muted" />
+            <span className="font-mono text-[10.5px] tracking-[0.14em] uppercase text-ink-on-inverse-muted">
+              Search needs, offers, helpers
+            </span>
+            <kbd className="font-mono text-[10px] ml-2 border border-white/10 px-1 rounded text-ink-on-inverse-muted">⌘K</kbd>
+          </div>
+          <span className="hidden md:inline-flex items-center gap-2 font-mono text-[10.5px] tracking-[0.18em] uppercase text-ink-on-inverse-muted">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent-emphasis animate-pulse" />
+            Member · {displayName}
           </span>
-        )}
-        {error && <span className="text-xs text-destructive">err: {error}</span>}
-        <span className="flex items-center gap-2 pl-2 border-l border-border">
-          {user ? (
-            <>
-              <UserCircle2 className="h-4 w-4 text-emerald-400" />
-              <Link href="/profile" className="text-xs underline underline-offset-2 hover:text-foreground">
-                {user.name} · {user.phone}
-              </Link>
+
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              className="inline-flex items-center gap-1.5 h-7 pl-1 pr-2 rounded-full bg-white/[0.05] hover:bg-white/[0.09] text-ink-on-inverse"
+            >
+              <span className="h-5 w-5 rounded-full inline-flex items-center justify-center font-mono text-[10px] bg-white/10">
+                {initials}
+              </span>
+              <ChevronDown size={12} strokeWidth={1.6} />
+            </button>
+            <AnimatePresence>
+              {menuOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  className="absolute right-0 mt-2 w-56 rounded-xl shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)] z-50 overflow-hidden bg-inverse-elevated border border-on-inverse text-ink-on-inverse"
+                >
+                  <div className="px-3 py-2.5 border-b border-on-inverse">
+                    <div className="text-[12.5px] font-medium truncate">{displayName}</div>
+                    <div className="text-[11px] truncate text-ink-on-inverse-muted">{user?.phone}</div>
+                  </div>
+                  <Link
+                    href="/profile"
+                    onClick={() => setMenuOpen(false)}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-[12.5px] hover:bg-white/[0.05]"
+                  >
+                    <UserIcon size={13} strokeWidth={1.6} /> My profile
+                  </Link>
+                  <button
+                    onClick={() => { setMenuOpen(false); onLogout(); }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-[12.5px] hover:bg-white/[0.05] border-t border-on-inverse text-ink-on-inverse-muted hover:text-ink-on-inverse"
+                  >
+                    <LogOut size={13} strokeWidth={1.6} /> Sign out
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-[200px_1fr]">
+        <nav className="border-r border-on-inverse p-2 md:p-3 flex md:flex-col gap-1 overflow-x-auto md:overflow-x-visible">
+          {tabs.map((t) => {
+            const Icon = t.icon;
+            const activeTab = active === t.id;
+            const isCompose = t.id === "compose";
+            const isAlerts = t.id === "alerts";
+            return (
               <button
-                onClick={onLogout}
-                className="text-xs underline underline-offset-2 hover:text-foreground gap-1 inline-flex items-center"
+                key={t.id}
+                onClick={() => onNavigate(t.id)}
+                className={cn(
+                  "group inline-flex md:flex items-center gap-2.5 rounded-lg px-2.5 h-9 text-[12.5px] font-medium transition-colors whitespace-nowrap",
+                  activeTab
+                    ? "bg-white/[0.06] text-ink-on-inverse"
+                    : "text-ink-on-inverse-muted hover:text-ink-on-inverse hover:bg-white/[0.04]"
+                )}
               >
-                <LogOut className="h-3 w-3" /> log out
+                <span
+                  className={cn(
+                    "inline-flex h-6 w-6 items-center justify-center rounded-md",
+                    isCompose ? (activeTab ? "bg-elevated text-ink" : "bg-white/[0.08] text-ink-on-inverse") : ""
+                  )}
+                >
+                  <Icon size={14} strokeWidth={1.6} />
+                </span>
+                <span>{t.label}</span>
+                {isAlerts && alertsCount > 0 && (
+                  <span
+                    className="ml-auto inline-flex items-center justify-center h-4 min-w-[18px] px-1 rounded-full font-mono text-[10px]"
+                    style={{ background: "var(--signal-critical)", color: "white" }}
+                  >
+                    {alertsCount}
+                  </span>
+                )}
               </button>
-            </>
-          ) : (
-            <>
-              <Link href="/login" className="text-xs underline inline-flex items-center gap-1">
-                <LogIn className="h-3 w-3" /> log in
-              </Link>
-              <Link href="/register" className="text-xs underline">
-                register
-              </Link>
-            </>
-          )}
-        </span>
+            );
+          })}
+          <div className="hidden md:block mt-auto pt-3 px-2.5 font-mono text-[10px] tracking-[0.18em] uppercase text-ink-on-inverse-muted">
+            Demo · simulation
+          </div>
+        </nav>
+
+        <div className="min-w-0 p-4 md:p-6 bg-inverse">{children}</div>
       </div>
     </div>
   );
 }
 
-function SummaryBar({ summary }: { summary: { totalNeeds: number; totalResources: number; urgentCases: number; safeMatches: number } }) {
-  const cells = [
-    { label: "needs", value: summary.totalNeeds, tone: "text-foreground" },
-    { label: "helpers", value: summary.totalResources, tone: "text-emerald-400" },
-    { label: "urgent", value: summary.urgentCases, tone: "text-red-400" },
-    { label: "safe matches", value: summary.safeMatches, tone: "text-sky-400" },
-  ];
+function Eyebrow({ children }: { children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {cells.map((c, i) => (
-        <motion.div
-          key={c.label}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: i * 0.08, duration: 0.4 }}
-        >
-          <Card>
-            <CardContent className="p-4">
-              <div className={cn("text-3xl font-bold tabular-nums", c.tone)}>{c.value}</div>
-              <div className="text-xs uppercase tracking-wide text-muted-foreground mt-1">{c.label}</div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      ))}
+    <span className="font-mono text-[10.5px] tracking-[0.18em] uppercase text-ink-on-inverse-muted">
+      {children}
+    </span>
+  );
+}
+
+function MapTab({
+  user,
+  onChange,
+}: {
+  user: SessionUser | null;
+  onChange: () => void;
+}) {
+  return (
+    <div>
+      <Eyebrow>Live Map</Eyebrow>
+      <h2 className="mt-1 font-display text-ink-on-inverse text-[22px]" style={{ fontWeight: 500 }}>
+        Needs, offers, and matches around you.
+      </h2>
+      <p className="mt-1 text-[13px] text-ink-on-inverse-muted">
+        Click any pin for details. Open requests can be accepted directly.
+      </p>
+      <div className="mt-4 rounded-2xl overflow-hidden border border-on-inverse">
+        <CrisisMap user={user} onChange={onChange} />
+      </div>
     </div>
   );
 }
 
-function UnmatchedAlert({ requests, matchedRequestIds }: { requests: MapRequest[]; matchedRequestIds: Set<number> }) {
-  const unmatchedUrgent = requests.filter((r) => !matchedRequestIds.has(r.id) && r.urgency >= 4);
-  if (unmatchedUrgent.length === 0) return null;
+function FeedTab({
+  payload,
+  user,
+  matchedRequestIds,
+  onChange,
+}: {
+  payload: MapPayload;
+  user: SessionUser | null;
+  matchedRequestIds: Set<number>;
+  onChange: () => void;
+}) {
+  const others = payload.requests
+    .filter((r) => !user || r.userId !== user.id)
+    .sort((a, b) => b.urgency - a.urgency);
+  return (
+    <div className="space-y-6">
+      <div>
+        <Eyebrow>Open requests near you · accept any</Eyebrow>
+        <h2 className="mt-1 font-display text-ink-on-inverse text-[22px]" style={{ fontWeight: 500 }}>
+          {others.length} need{others.length === 1 ? "" : "s"} from neighbors.
+        </h2>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        {others.map((r, i) => (
+          <NeedCardDark
+            key={r.id}
+            request={r}
+            index={i}
+            user={user}
+            matched={matchedRequestIds.has(r.id)}
+            onChange={onChange}
+          />
+        ))}
+        {others.length === 0 && (
+          <div className="rounded-xl border border-on-inverse bg-inverse-card p-4 text-[13px] text-ink-on-inverse-muted">
+            Nothing open right now.
+          </div>
+        )}
+      </div>
+
+      <div>
+        <Eyebrow>Available helpers nearby</Eyebrow>
+        <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
+          {payload.providers.map((p) => (
+            <ProviderCardDark key={p.id} provider={p} />
+          ))}
+          {payload.providers.length === 0 && (
+            <div className="rounded-xl border border-on-inverse bg-inverse-card p-4 text-[13px] text-ink-on-inverse-muted">
+              No helpers registered.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ComposeTab({ user }: { user: SessionUser | null }) {
+  return (
+    <div className="max-w-2xl">
+      <Eyebrow>Compose · post a need or offer</Eyebrow>
+      <h2 className="mt-1 font-display text-ink-on-inverse text-[22px]" style={{ fontWeight: 500 }}>
+        Post a need or offer help.
+      </h2>
+      <p className="mt-1 text-[13px] text-ink-on-inverse-muted">
+        Quickest way: text the WhatsApp bot. We&apos;ll classify and post for you.
+      </p>
+      <div className="mt-5 rounded-xl border border-on-inverse bg-inverse-card p-4">
+        <div className="flex items-start gap-3">
+          <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-white/[0.08] text-ink-on-inverse shrink-0">
+            <Send size={16} strokeWidth={1.6} />
+          </span>
+          <div>
+            <div className="text-[14px] font-medium text-ink-on-inverse">WhatsApp the sandbox</div>
+            <div className="mt-1 text-[12.5px] text-ink-on-inverse-muted">
+              Send any message describing your need or what you can offer to{" "}
+              <span className="font-mono text-ink-on-inverse">+1 415 523 8886</span>. Logged in as{" "}
+              <span className="text-ink-on-inverse">{user?.phone ?? "—"}</span>, your reply auto-posts.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 rounded-xl border border-on-inverse bg-inverse-card p-4 text-[12.5px] text-ink-on-inverse-muted">
+        Web compose form coming soon.
+      </div>
+    </div>
+  );
+}
+
+function AlertsTab({
+  payload,
+  user,
+  onChange,
+}: {
+  payload: MapPayload;
+  user: SessionUser | null;
+  onChange: () => void;
+}) {
+  const incoming = payload.matches.filter(
+    (m) => user && m.requestUserId === user.id && m.status === "helper_accepted"
+  );
+  const flagged = payload.matches.filter((m) => m.safetyFlag && m.status !== "completed");
+  return (
+    <div className="space-y-6">
+      <div>
+        <Eyebrow>Awaiting your confirmation</Eyebrow>
+        <h2 className="mt-1 font-display text-ink-on-inverse text-[22px]" style={{ fontWeight: 500 }}>
+          {incoming.length} match{incoming.length === 1 ? "" : "es"} waiting on you.
+        </h2>
+      </div>
+      <div className="space-y-3">
+        {incoming.map((m) => (
+          <ConfirmCard key={m.id} match={m} onChange={onChange} />
+        ))}
+        {incoming.length === 0 && (
+          <div className="rounded-xl border border-on-inverse bg-inverse-card p-4 text-[13px] text-ink-on-inverse-muted">
+            All clear. No pending confirmations.
+          </div>
+        )}
+      </div>
+
+      {flagged.length > 0 && (
+        <div>
+          <Eyebrow>Safety flags</Eyebrow>
+          <div className="mt-3 space-y-3">
+            {flagged.map((m) => (
+              <div key={m.id} className="rounded-xl border-2 border-red-500/60 bg-red-500/5 p-4">
+                <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-red-400">
+                  <ShieldAlert size={12} strokeWidth={1.7} />
+                  Safety review required
+                </div>
+                <div className="mt-2 text-[13.5px] text-ink-on-inverse">{m.action}</div>
+                {m.safetyNote && <div className="mt-1 text-[12px] text-red-200/80">{m.safetyNote}</div>}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function YouTab({
+  payload,
+  user,
+  onChange,
+}: {
+  payload: MapPayload;
+  user: SessionUser | null;
+  onChange: () => void;
+}) {
+  if (!user) return null;
+  const myRequests = payload.requests.filter((r) => r.userId === user.id);
+  const helpingMatches = payload.matches.filter((m) => m.helperUserId === user.id);
+  const completedRequests = myRequests.filter((r) =>
+    payload.matches.some((m) => m.requestId === r.id && m.status === "completed")
+  );
+  const activeRequests = myRequests.filter((r) => !completedRequests.includes(r));
+  const helpingActive = helpingMatches.filter((m) => m.status !== "completed");
+  const helpingCompleted = helpingMatches.filter((m) => m.status === "completed");
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Eyebrow>You · {user.name} · {user.phone}</Eyebrow>
+        <h2 className="mt-1 font-display text-ink-on-inverse text-[22px]" style={{ fontWeight: 500 }}>
+          Your requests and the help you&apos;re providing.
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Panel title="My requests">
+          {activeRequests.map((r) => {
+            const m = payload.matches.find((mm) => mm.requestId === r.id);
+            return <MyRequestRow key={r.id} request={r} match={m} onChange={onChange} />;
+          })}
+          {completedRequests.map((r) => {
+            const m = payload.matches.find((mm) => mm.requestId === r.id);
+            return <MyRequestRow key={r.id} request={r} match={m} onChange={onChange} completed />;
+          })}
+          {myRequests.length === 0 && <Empty text="No requests submitted." />}
+        </Panel>
+        <Panel title="I'm helping">
+          {helpingActive.map((m) => (
+            <HelpingRow key={m.id} match={m} onChange={onChange} />
+          ))}
+          {helpingCompleted.map((m) => (
+            <HelpingRow key={m.id} match={m} onChange={onChange} completed />
+          ))}
+          {helpingMatches.length === 0 && <Empty text="Not helping anyone yet." />}
+        </Panel>
+      </div>
+    </div>
+  );
+}
+
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-on-inverse bg-inverse-card p-4">
+      <div className="font-mono text-[10.5px] tracking-[0.18em] uppercase text-ink-on-inverse-muted mb-3">
+        {title}
+      </div>
+      <div className="space-y-3">{children}</div>
+    </div>
+  );
+}
+function Empty({ text }: { text: string }) {
+  return <div className="text-[12.5px] italic text-ink-on-inverse-muted">{text}</div>;
+}
+
+function urgencyTone(u: number) {
+  if (u >= 5) return { dot: "#EF4444", chip: "bg-red-500 text-white" };
+  if (u === 4) return { dot: "#F97316", chip: "bg-orange-500 text-white" };
+  if (u === 3) return { dot: "#EAB308", chip: "bg-yellow-500 text-black" };
+  return { dot: "#10B981", chip: "bg-emerald-500 text-white" };
+}
+
+function NeedCardDark({
+  request,
+  index,
+  user,
+  matched,
+  onChange,
+}: {
+  request: MapRequest;
+  index: number;
+  user: SessionUser | null;
+  matched: boolean;
+  onChange: () => void;
+}) {
+  const urgency = clampU(request.urgency);
+  const tone = urgencyTone(urgency);
+  const Icon = NEED_ICON[coerceNeedType(request.type)];
+  const [busy, setBusy] = useState(false);
+  const [accepted, setAccepted] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function accept() {
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/matches/accept-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId: request.id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setErr(data?.error || `HTTP ${res.status}`);
+        return;
+      }
+      setAccepted(true);
+      onChange();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "network error");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <motion.div
-      initial={{ opacity: 0, y: -6 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="mt-4 flex items-start gap-3 rounded-lg border-2 border-red-500/70 bg-red-500/10 px-4 py-3"
+      transition={{ delay: index * 0.04, duration: 0.3 }}
+      className="rounded-xl border border-on-inverse bg-inverse-card p-4"
     >
-      <AlertTriangle className="h-5 w-5 text-red-400 mt-0.5 shrink-0" />
-      <div className="text-sm">
-        <div className="font-semibold text-red-300">
-          {unmatchedUrgent.length} urgent need{unmatchedUrgent.length === 1 ? "" : "s"} unmatched
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-white/[0.06]">
+            <Icon size={13} strokeWidth={1.7} className="text-ink-on-inverse" />
+          </span>
+          <div className="min-w-0">
+            <div className="text-[13.5px] font-medium text-ink-on-inverse truncate">{request.userName}</div>
+            <div className="font-mono text-[10px] tracking-[0.16em] uppercase text-ink-on-inverse-muted">
+              {request.type}
+            </div>
+          </div>
         </div>
-        <div className="text-xs text-red-200/80 mt-0.5">
-          {unmatchedUrgent
-            .slice(0, 3)
-            .map((r) => `${r.userName} (U${r.urgency} ${r.type})`)
-            .join(" · ")}
-          {unmatchedUrgent.length > 3 && ` · +${unmatchedUrgent.length - 3} more`}
-        </div>
+        <span className={cn("inline-flex items-center justify-center px-2 h-5 rounded font-mono text-[10px]", tone.chip)}>
+          U{urgency}
+        </span>
+      </div>
+      <p className="mt-3 text-[13px] leading-[1.55] text-ink-on-inverse">{request.description}</p>
+      <div className="mt-3 flex items-center justify-between text-[11px] text-ink-on-inverse-muted">
+        <span>status · {request.status}</span>
+        {matched ? (
+          <span className="inline-flex items-center gap-1 text-emerald-400">
+            <CheckCircle2 size={11} strokeWidth={1.7} /> matched
+          </span>
+        ) : (
+          <span className="text-orange-400">unmatched</span>
+        )}
+      </div>
+      <div className="mt-3">
+        {accepted ? (
+          <span className="inline-flex items-center gap-1 text-[12px] text-emerald-400">
+            <CheckCircle2 size={12} strokeWidth={1.7} /> Accepted · awaiting requester
+          </span>
+        ) : !user ? (
+          <Link href="/login" className="text-[12px] underline text-ink-on-inverse-muted">
+            Log in to accept
+          </Link>
+        ) : user.id === request.userId ? (
+          <span className="text-[11px] italic text-ink-on-inverse-muted">Your request</span>
+        ) : matched ? null : (
+          <button
+            onClick={accept}
+            disabled={busy}
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-md bg-white text-black text-[12.5px] font-medium hover:bg-white/90 disabled:opacity-60"
+          >
+            <HandHeart size={13} strokeWidth={1.7} />
+            {busy ? "Accepting..." : "Accept"}
+          </button>
+        )}
+        {err && <div className="mt-2 text-[11px] text-red-400">{err}</div>}
       </div>
     </motion.div>
   );
 }
 
-function MyActivity({
-  user,
-  requests,
-  matches,
-  onChange,
-}: {
-  user: SessionUser;
-  requests: MapRequest[];
-  matches: MapMatch[];
-  onChange: () => void;
-}) {
-  const myRequests = requests.filter((r) => r.userId === user.id);
-  const helpingMatches = matches.filter((m) => m.helperUserId === user.id);
-  const incomingMatches = matches.filter(
-    (m) => m.requestUserId === user.id && m.status === "helper_accepted"
-  );
-
-  const isActive = (m: MapMatch) => m.status !== "completed";
-  const myActiveRequests = myRequests.filter(
-    (r) => !matches.some((m) => m.requestId === r.id && m.status === "completed")
-  );
-  const myCompletedRequests = myRequests.filter((r) =>
-    matches.some((m) => m.requestId === r.id && m.status === "completed")
-  );
-  const helpingActive = helpingMatches.filter(isActive);
-  const helpingCompleted = helpingMatches.filter((m) => m.status === "completed");
-
-  if (
-    myRequests.length === 0 &&
-    helpingMatches.length === 0 &&
-    incomingMatches.length === 0
-  ) {
-    return (
-      <div className="mt-4 rounded-lg border border-border bg-card/40 px-4 py-3 text-sm text-muted-foreground flex items-center gap-2">
-        <ClipboardList className="h-4 w-4" />
-        Logged in as {user.name}. No requests or matches yet — text the WhatsApp bot or accept an open need below.
-      </div>
-    );
-  }
-
+function ProviderCardDark({ provider }: { provider: MapProvider }) {
+  const t = coerceResourceType(provider.type);
+  void t;
   return (
-    <section className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
-      <ActivityColumn
-        title="My requests"
-        empty="No requests submitted."
-        items={[
-          ...myActiveRequests.map((r) => {
-            const m = matches.find((mm) => mm.requestId === r.id);
-            return (
-              <MyRequestRow key={`mr-${r.id}`} request={r} match={m} onChange={onChange} userId={user.id} />
-            );
-          }),
-          ...myCompletedRequests.map((r) => {
-            const m = matches.find((mm) => mm.requestId === r.id);
-            return (
-              <MyRequestRow key={`mr-${r.id}`} request={r} match={m} onChange={onChange} userId={user.id} completed />
-            );
-          }),
-        ]}
-      />
-      <ActivityColumn
-        title="I'm helping"
-        empty="Not helping anyone yet."
-        items={[
-          ...helpingActive.map((m) => (
-            <HelpingRow key={`hm-${m.id}`} match={m} userId={user.id} onChange={onChange} />
-          )),
-          ...helpingCompleted.map((m) => (
-            <HelpingRow key={`hm-${m.id}`} match={m} userId={user.id} onChange={onChange} completed />
-          )),
-        ]}
-      />
-      <ActivityColumn
-        title="Confirm a helper"
-        empty="No helpers awaiting your confirmation."
-        items={incomingMatches.map((m) => (
-          <ConfirmRow key={`cf-${m.id}`} match={m} onChange={onChange} />
-        ))}
-      />
-    </section>
+    <div className="rounded-xl border border-on-inverse bg-inverse-card p-4">
+      <div className="flex items-center gap-2">
+        <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+        <div className="min-w-0">
+          <div className="text-[13.5px] font-medium text-ink-on-inverse truncate">{provider.userName}</div>
+          <div className="font-mono text-[10px] tracking-[0.16em] uppercase text-ink-on-inverse-muted">
+            offering · {provider.type}
+          </div>
+        </div>
+      </div>
+      <p className="mt-3 text-[13px] leading-[1.55] text-ink-on-inverse">{provider.description}</p>
+      <div className="mt-2 text-[11px] text-ink-on-inverse-muted">{provider.status}</div>
+    </div>
+  );
+}
+
+function ConfirmCard({ match, onChange }: { match: MapMatch; onChange: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  async function confirm() {
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch("/api/matches/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matchId: match.id }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setErr(data?.error || `HTTP ${res.status}`);
+        return;
+      }
+      onChange();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "network error");
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <div className="rounded-xl border border-on-inverse bg-inverse-card p-4">
+      <div className="flex items-center gap-2 font-mono text-[10.5px] tracking-[0.18em] uppercase text-amber-300">
+        <ShieldCheck size={12} strokeWidth={1.7} />
+        Helper accepted · awaiting your confirm
+      </div>
+      <div className="mt-2 text-[14px] font-medium text-ink-on-inverse">{match.helperName}</div>
+      <div className="mt-1 text-[13px] text-ink-on-inverse-muted">{match.action}</div>
+      <button
+        onClick={confirm}
+        disabled={busy}
+        className="mt-3 inline-flex items-center h-8 px-3 rounded-md bg-white text-black text-[12.5px] font-medium hover:bg-white/90 disabled:opacity-60"
+      >
+        {busy ? "Confirming..." : "Confirm helper"}
+      </button>
+      {err && <div className="mt-2 text-[11px] text-red-400">{err}</div>}
+    </div>
   );
 }
 
 function statusLabel(m: MapMatch | undefined, role: "helper" | "requester"): React.ReactNode {
   if (!m) return <span className="text-orange-400">unmatched</span>;
-  if (m.status === "completed") return <span className="text-muted-foreground">completed</span>;
+  if (m.status === "completed") return <span className="text-ink-on-inverse-muted">completed</span>;
   if (m.status === "approved") {
     const myMark = role === "helper" ? m.helperMarkedComplete : m.requesterMarkedComplete;
     const otherMark = role === "helper" ? m.requesterMarkedComplete : m.helperMarkedComplete;
-    if (myMark && !otherMark) return <span className="text-amber-400">waiting on other party to mark complete</span>;
-    if (!myMark && otherMark) return <span className="text-amber-400">other party marked complete · confirm to finish</span>;
-    return <span className="text-emerald-400">approved · go help now</span>;
+    if (myMark && !otherMark) return <span className="text-amber-400">waiting on other party</span>;
+    if (!myMark && otherMark) return <span className="text-amber-400">other marked · confirm</span>;
+    return <span className="text-emerald-400">approved · go help</span>;
   }
   if (m.status === "helper_accepted") {
     return role === "requester"
@@ -554,28 +883,27 @@ function statusLabel(m: MapMatch | undefined, role: "helper" | "requester"): Rea
 function MyRequestRow({
   request,
   match,
-  userId,
   onChange,
   completed,
 }: {
   request: MapRequest;
   match?: MapMatch;
-  userId: number;
   onChange: () => void;
   completed?: boolean;
 }) {
-  void userId;
+  const colors = urgencyColors(clampU(request.urgency));
+  void colors;
   return (
-    <div className={cn("text-xs space-y-1", completed && "opacity-50")}>
-      <div className="font-medium text-foreground">
-        {request.type} · U{request.urgency}
+    <div className={cn("rounded-lg border border-on-inverse p-3", completed && "opacity-50")}>
+      <div className="flex items-center justify-between">
+        <div className="text-[12.5px] font-medium text-ink-on-inverse">{request.type} · U{request.urgency}</div>
+        <div className="font-mono text-[10px] tracking-[0.16em] uppercase">
+          {match ? statusLabel(match, "requester") : <span className="text-orange-400">unmatched</span>}
+        </div>
       </div>
-      <div className="text-muted-foreground line-clamp-2">{request.description}</div>
-      <div className="text-[10px] uppercase tracking-wider">
-        {match ? <>{statusLabel(match, "requester")}{match.helperName ? ` · ${match.helperName}` : ""}</> : <span className="text-orange-400">unmatched</span>}
-      </div>
+      <p className="mt-1 text-[12.5px] text-ink-on-inverse-muted line-clamp-2">{request.description}</p>
       {match && match.status === "approved" && !completed && (
-        <CompleteButton match={match} role="requester" onChange={onChange} />
+        <CompleteButtonDark match={match} role="requester" onChange={onChange} />
       )}
     </div>
   );
@@ -583,29 +911,28 @@ function MyRequestRow({
 
 function HelpingRow({
   match,
-  userId,
   onChange,
   completed,
 }: {
   match: MapMatch;
-  userId: number;
   onChange: () => void;
   completed?: boolean;
 }) {
-  void userId;
   return (
-    <div className={cn("text-xs space-y-1", completed && "opacity-50")}>
-      <div className="font-medium text-foreground">{match.requesterName}</div>
-      <div className="text-muted-foreground line-clamp-2">{match.action}</div>
-      <div className="text-[10px] uppercase tracking-wider">{statusLabel(match, "helper")}</div>
+    <div className={cn("rounded-lg border border-on-inverse p-3", completed && "opacity-50")}>
+      <div className="flex items-center justify-between">
+        <div className="text-[12.5px] font-medium text-ink-on-inverse">{match.requesterName}</div>
+        <div className="font-mono text-[10px] tracking-[0.16em] uppercase">{statusLabel(match, "helper")}</div>
+      </div>
+      <p className="mt-1 text-[12.5px] text-ink-on-inverse-muted line-clamp-2">{match.action}</p>
       {match.status === "approved" && !completed && (
-        <CompleteButton match={match} role="helper" onChange={onChange} />
+        <CompleteButtonDark match={match} role="helper" onChange={onChange} />
       )}
     </div>
   );
 }
 
-function CompleteButton({
+function CompleteButtonDark({
   match,
   role,
   onChange,
@@ -643,368 +970,23 @@ function CompleteButton({
 
   if (myMark) {
     return (
-      <div className="text-[10px] text-emerald-400">
-        ✓ You marked complete{otherMark ? "" : " · waiting on other party"}
+      <div className="mt-2 text-[10.5px] text-emerald-400">
+        ✓ Marked complete{otherMark ? "" : " · waiting on other party"}
       </div>
     );
   }
-
   return (
-    <div className="space-y-1">
-      <Button size="sm" className="h-7 mt-1" onClick={mark} disabled={busy}>
-        {busy ? "Marking..." : otherMark ? "Confirm complete · finish" : "Mark help complete"}
-      </Button>
-      {err && <div className="text-destructive text-[10px]">{err}</div>}
+    <div className="mt-2">
+      <button
+        onClick={mark}
+        disabled={busy}
+        className="h-7 px-3 rounded-md bg-white text-black text-[11.5px] font-medium hover:bg-white/90 disabled:opacity-60"
+      >
+        {busy ? "Marking..." : otherMark ? "Confirm complete · finish" : "Mark complete"}
+      </button>
+      {err && <div className="mt-1 text-[10.5px] text-red-400">{err}</div>}
     </div>
   );
 }
 
-function ActivityColumn({
-  title,
-  empty,
-  items,
-}: {
-  title: string;
-  empty: string;
-  items: React.ReactNode[];
-}) {
-  return (
-    <Card>
-      <CardContent className="p-3">
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mb-2">
-          {title}
-        </div>
-        {items.length === 0 ? (
-          <div className="text-xs text-muted-foreground italic">{empty}</div>
-        ) : (
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">{items}</div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-function ConfirmRow({ match, onChange }: { match: MapMatch; onChange: () => void }) {
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  async function confirm() {
-    setBusy(true);
-    setErr(null);
-    try {
-      const res = await fetch("/api/matches/confirm", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ matchId: match.id }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setErr(data?.error || `HTTP ${res.status}`);
-        return;
-      }
-      onChange();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "network error");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="text-xs space-y-1">
-      <div className="font-medium text-foreground">{match.helperName}</div>
-      <div className="text-muted-foreground line-clamp-2">{match.action}</div>
-      <Button size="sm" className="h-7 mt-1" onClick={confirm} disabled={busy}>
-        {busy ? "Confirming..." : "Confirm helper · send SMS"}
-      </Button>
-      {err && <div className="text-destructive text-[10px]">{err}</div>}
-    </div>
-  );
-}
-
-function SectionTitle({ icon, label, count }: { icon: React.ReactNode; label: string; count: number }) {
-  return (
-    <div className="flex items-center justify-between mb-3">
-      <div className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-        {icon}
-        {label}
-      </div>
-      <span className="text-xs font-mono text-muted-foreground">{count}</span>
-    </div>
-  );
-}
-
-function EmptyHint({ text }: { text: string }) {
-  return (
-    <Card>
-      <CardContent className="p-4 text-sm text-muted-foreground">{text}</CardContent>
-    </Card>
-  );
-}
-
-function NeedCard({
-  request,
-  index,
-  matched,
-  user,
-  onAccepted,
-}: {
-  request: MapRequest;
-  index: number;
-  matched: boolean;
-  user: SessionUser | null;
-  onAccepted: () => void;
-}) {
-  const urgency = clampUrgency(request.urgency);
-  const colors = urgencyColors(urgency);
-  const Icon = NEED_ICON[coerceNeedType(request.type)];
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const [accepted, setAccepted] = useState(false);
-  const isOwn = user?.id === request.userId;
-
-  async function accept() {
-    setBusy(true);
-    setErr(null);
-    try {
-      const res = await fetch("/api/matches/accept-request", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId: request.id }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setErr(data?.error || `HTTP ${res.status}`);
-        return;
-      }
-      setAccepted(true);
-      onAccepted();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "network error");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04, duration: 0.3 }}
-    >
-      <Card className={cn("border", colors.border, colors.bg)}>
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-center gap-2">
-              <Icon className={cn("h-4 w-4", colors.text)} />
-              <span className="font-semibold">{request.userName}</span>
-              <Badge variant="outline" className="text-[10px] uppercase">{request.type}</Badge>
-            </div>
-            <span className={cn("text-xs font-bold rounded px-2 py-0.5", colors.chip)}>U{urgency}</span>
-          </div>
-          <p className="mt-2 text-sm leading-relaxed">{request.description}</p>
-          <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-            <span>status: {request.status}</span>
-            {matched ? (
-              <span className="flex items-center gap-1 text-emerald-400">
-                <CheckCircle2 className="h-3 w-3" /> matched
-              </span>
-            ) : (
-              <span className="text-orange-400">unmatched</span>
-            )}
-          </div>
-          {!matched && !isOwn && (
-            <div className="mt-3">
-              {accepted ? (
-                <span className="text-xs text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" /> Accepted · awaiting requester confirm
-                </span>
-              ) : user ? (
-                <Button size="sm" className="h-8 gap-1" onClick={accept} disabled={busy}>
-                  <HandHeart className="h-3.5 w-3.5" />
-                  {busy ? "Accepting..." : "Accept this request"}
-                </Button>
-              ) : (
-                <Link href="/login" className="text-xs underline">
-                  Log in to accept
-                </Link>
-              )}
-              {err && <div className="text-xs text-destructive mt-1">{err}</div>}
-            </div>
-          )}
-          {isOwn && (
-            <div className="mt-2 text-[11px] italic text-muted-foreground">Your request</div>
-          )}
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-}
-
-function ResourceCard({ provider, index }: { provider: MapProvider; index: number }) {
-  const Icon = RESOURCE_ICON[coerceResourceType(provider.type)];
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.04, duration: 0.3 }}
-    >
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-2">
-            <Icon className="h-4 w-4 text-emerald-400" />
-            <span className="font-semibold">{provider.userName}</span>
-            <Badge variant="outline" className="text-[10px] uppercase">{provider.type}</Badge>
-          </div>
-          <p className="mt-2 text-sm leading-relaxed">{provider.description}</p>
-          <div className="mt-2 text-xs text-muted-foreground">status: {provider.status}</div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-}
-
-function MatchCard({
-  match,
-  index,
-  request,
-  provider,
-  user,
-  onChange,
-}: {
-  match: MapMatch;
-  index: number;
-  request: MapRequest | undefined;
-  provider: MapProvider | undefined;
-  user: SessionUser | null;
-  onChange: () => void;
-}) {
-  const flagged = match.safetyFlag;
-  const [busy, setBusy] = useState<"none" | "approving" | "confirming" | "skipped">("none");
-  const [err, setErr] = useState<string | null>(null);
-
-  const isRequester = user?.id === match.requestUserId;
-  const canApprove = match.status === "proposed" && !!user;
-  const canConfirm = match.status === "helper_accepted" && isRequester;
-
-  async function call(path: string, kind: "approving" | "confirming") {
-    setBusy(kind);
-    setErr(null);
-    try {
-      const res = await fetch(path, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ matchId: match.id }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        setErr(data?.error || `HTTP ${res.status}`);
-        setBusy("none");
-        return;
-      }
-      onChange();
-      setBusy("none");
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "network error");
-      setBusy("none");
-    }
-  }
-
-  if (busy === "skipped") return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05, duration: 0.3 }}
-    >
-      <Card className={cn(flagged ? "border-2 border-red-500/80 bg-red-500/5" : "border-border")}>
-        <CardContent className="p-4">
-          {flagged && (
-            <div className="flex items-center gap-2 mb-2 text-red-400 text-xs font-semibold uppercase tracking-wider">
-              <ShieldAlert className="h-4 w-4" />
-              Safety review required
-            </div>
-          )}
-          <div className="flex items-center justify-between gap-2 mb-1">
-            <Badge variant="outline" className="text-[10px] uppercase">
-              {match.status === "approved"
-                ? "approved · go help"
-                : match.status === "helper_accepted"
-                  ? "awaiting requester"
-                  : "proposed"}
-            </Badge>
-            <span className="text-[10px] text-muted-foreground">
-              conf {(match.confidence * 100).toFixed(0)}%
-            </span>
-          </div>
-          <p className="text-sm font-medium leading-relaxed">{match.action}</p>
-          <div className="mt-2 text-xs text-muted-foreground space-y-1">
-            <div>
-              <span className="text-foreground/80">Helper:</span> {match.helperName}
-              {" → "}
-              <span className="text-foreground/80">Recipient:</span> {match.requesterName}
-            </div>
-            {request && <div className="opacity-80">Request: {request.description}</div>}
-            {provider && <div className="opacity-80">Offering: {provider.description}</div>}
-          </div>
-          {flagged && match.safetyNote && (
-            <div className="mt-2 rounded border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-200">
-              <strong>Note:</strong> {match.safetyNote}
-            </div>
-          )}
-          <div className="mt-3 flex items-center gap-2">
-            {match.status === "approved" ? (
-              <span className="text-xs flex items-center gap-1 text-emerald-400">
-                <CheckCircle2 className="h-3 w-3" /> Approved · helper notified
-              </span>
-            ) : match.status === "helper_accepted" ? (
-              canConfirm ? (
-                <Button
-                  size="sm"
-                  className="h-8"
-                  onClick={() => call("/api/matches/confirm", "confirming")}
-                  disabled={busy !== "none"}
-                >
-                  {busy === "confirming" ? "Confirming..." : "Confirm helper"}
-                </Button>
-              ) : (
-                <span className="text-xs text-amber-400">
-                  Waiting on {match.requesterName} to confirm.
-                </span>
-              )
-            ) : canApprove ? (
-              <>
-                <Button
-                  size="sm"
-                  className="h-8"
-                  onClick={() => call("/api/matches/approve", "approving")}
-                  disabled={busy !== "none"}
-                >
-                  {busy === "approving" ? "Accepting..." : "Accept (I'm the helper)"}
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="h-8"
-                  onClick={() => setBusy("skipped")}
-                  disabled={busy !== "none"}
-                >
-                  Skip
-                </Button>
-              </>
-            ) : (
-              <Link href="/login" className="text-xs underline">
-                Log in to accept
-              </Link>
-            )}
-          </div>
-          {err && <div className="mt-2 text-xs text-destructive">Error: {err}</div>}
-          <div className="mt-3 text-[11px] text-muted-foreground italic">
-            Suggestion only — both parties confirm before help begins.
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
-  );
-}
+void AlertTriangle;
